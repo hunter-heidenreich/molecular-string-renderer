@@ -12,10 +12,13 @@ from PIL import Image
 
 from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs import (
+    BMPOutput,
     JPEGOutput,
     PDFOutput,
     PNGOutput,
     SVGOutput,
+    TIFFOutput,
+    WEBPOutput,
     get_output_handler,
 )
 
@@ -69,15 +72,53 @@ class TestOutputHandlerFactory:
         assert isinstance(handler, PDFOutput)
         assert handler.file_extension == ".pdf"
 
+    def test_get_output_handler_webp(self):
+        """Test getting WebP output handler."""
+        handler = get_output_handler("webp")
+        assert isinstance(handler, WEBPOutput)
+        assert handler.file_extension == ".webp"
+
+    def test_get_output_handler_tiff(self):
+        """Test getting TIFF output handler."""
+        handler = get_output_handler("tiff")
+        assert isinstance(handler, TIFFOutput)
+        assert handler.file_extension == ".tiff"
+
+    def test_get_output_handler_tif(self):
+        """Test getting TIFF output handler (alternative name)."""
+        handler = get_output_handler("tif")
+        assert isinstance(handler, TIFFOutput)
+        assert handler.file_extension == ".tiff"
+
+    def test_get_output_handler_bmp(self):
+        """Test getting BMP output handler."""
+        handler = get_output_handler("bmp")
+        assert isinstance(handler, BMPOutput)
+        assert handler.file_extension == ".bmp"
+
     def test_get_output_handler_case_insensitive(self):
         """Test that format matching is case insensitive."""
-        formats = ["PNG", "SVG", "JPG", "JPEG", "PDF", "Png", "Svg"]
+        formats = [
+            "PNG",
+            "SVG",
+            "JPG",
+            "JPEG",
+            "PDF",
+            "WEBP",
+            "TIFF",
+            "BMP",
+            "Png",
+            "Svg",
+        ]
         expected_classes = [
             PNGOutput,
             SVGOutput,
             JPEGOutput,
             JPEGOutput,
             PDFOutput,
+            WEBPOutput,
+            TIFFOutput,
+            BMPOutput,
             PNGOutput,
             SVGOutput,
         ]
@@ -88,7 +129,7 @@ class TestOutputHandlerFactory:
 
     def test_get_output_handler_invalid_format(self):
         """Test error handling for invalid formats."""
-        invalid_formats = ["gif", "bmp", "tiff", "webp", "invalid", ""]
+        invalid_formats = ["gif", "ico", "psd", "invalid", ""]
 
         for fmt in invalid_formats:
             with pytest.raises(ValueError) as exc_info:

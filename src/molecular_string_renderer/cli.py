@@ -111,7 +111,7 @@ Common molecular formats:
     output_group.add_argument(
         "--output-format",
         type=str,
-        choices=["png", "svg", "jpg", "jpeg", "pdf"],
+        choices=["png", "svg", "jpg", "jpeg", "pdf", "webp", "tiff", "tif", "bmp"],
         help="Output image format (default: inferred from filename or png)",
     )
 
@@ -263,6 +263,10 @@ def determine_output_format(output_path: str | None, output_format: str | None) 
             ".jpg": "jpg",
             ".jpeg": "jpg",
             ".pdf": "pdf",
+            ".webp": "webp",
+            ".tiff": "tiff",
+            ".tif": "tiff",
+            ".bmp": "bmp",
         }
         return format_map.get(suffix, "png")
 

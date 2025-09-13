@@ -22,7 +22,7 @@ class TestAllSupportedOutputFormats:
     def test_cli_supported_formats(self):
         """Test all formats supported by CLI can be rendered."""
         # These are the formats from cli.py choices
-        cli_formats = ["png", "svg", "jpg", "jpeg", "pdf"]
+        cli_formats = ["png", "svg", "jpg", "jpeg", "pdf", "webp", "tiff", "tif", "bmp"]
         smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -43,8 +43,18 @@ class TestAllSupportedOutputFormats:
     def test_config_supported_formats(self):
         """Test all formats from OutputConfig validation."""
         # These are from config.py OutputConfig.validate_format()
-        # All formats should now be implemented including PDF
-        implemented_formats = ["png", "svg", "jpg", "jpeg", "pdf"]
+        # All formats should now be implemented including new ones
+        implemented_formats = [
+            "png",
+            "svg",
+            "jpg",
+            "jpeg",
+            "pdf",
+            "webp",
+            "tiff",
+            "tif",
+            "bmp",
+        ]
         smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -83,6 +93,39 @@ class TestAllSupportedOutputFormats:
                 assert image is not None, f"No image returned for {fmt}"
                 assert output_path.exists(), f"Output file not created for {fmt}"
                 assert output_path.stat().st_size > 0, f"Empty output file for {fmt}"
+
+    def test_tiff_vs_tif_equivalence(self):
+        """Test that 'tiff' and 'tif' produce equivalent results."""
+        smiles = SAMPLE_MOLECULES["smiles"]["benzene"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tiff_path = Path(temp_dir) / "molecule.tiff"
+            tif_path = Path(temp_dir) / "molecule.tif"
+
+            # Render with tiff format
+            tiff_image = render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="tiff",
+                output_path=tiff_path,
+            )
+
+            # Render with tif format
+            tif_image = render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="tif",
+                output_path=tif_path,
+            )
+
+            # Both should succeed
+            assert tiff_image is not None
+            assert tif_image is not None
+            assert tiff_path.exists()
+            assert tif_path.exists()
+
+            # Both should be the same size (same image dimensions)
+            assert tiff_image.size == tif_image.size
 
     def test_jpg_vs_jpeg_equivalence(self):
         """Test that 'jpg' and 'jpeg' produce equivalent results."""
@@ -133,6 +176,10 @@ class TestAllSupportedOutputFormats:
             "jpg": ".jpg",
             "jpeg": ".jpg",  # JPEG handler uses .jpg extension
             "pdf": ".pdf",
+            "webp": ".webp",
+            "tiff": ".tiff",
+            "tif": ".tiff",  # TIF uses TIFF handler which has .tiff extension
+            "bmp": ".bmp",
         }
 
         for fmt, expected_ext in expected_extensions.items():
@@ -183,7 +230,7 @@ class TestAllSupportedOutputFormats:
 
     def test_memory_only_rendering_all_formats(self):
         """Test in-memory rendering for all formats (no file output)."""
-        formats = ["png", "svg", "jpg", "jpeg", "pdf"]
+        formats = ["png", "svg", "jpg", "jpeg", "pdf", "webp", "tiff", "tif", "bmp"]
         smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
 
         for fmt in formats:
@@ -239,7 +286,11 @@ class TestUnsupportedFormats:
 
     def test_unsupported_output_format_error(self):
         """Test that unsupported output formats raise appropriate errors."""
-        unsupported_formats = ["bmp", "tiff", "webp", "gif"]
+        unsupported_formats = [
+            "gif",
+            "ico",
+            "psd",
+        ]  # These formats are truly unsupported
         smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
 
         for fmt in unsupported_formats:
@@ -252,7 +303,12 @@ class TestUnsupportedFormats:
 
     def test_output_handler_factory_errors(self):
         """Test that output handler factory rejects unsupported formats."""
-        unsupported_formats = ["bmp", "tiff", "webp", "gif", "invalid"]
+        unsupported_formats = [
+            "gif",
+            "ico",
+            "psd",
+            "invalid",
+        ]  # These formats are truly unsupported
 
         for fmt in unsupported_formats:
             with pytest.raises(ValueError, match="Unsupported output format"):
@@ -266,9 +322,13 @@ class TestUnsupportedFormats:
             ("JPG", "jpg"),
             ("JPEG", "jpeg"),
             ("PDF", "pdf"),
+            ("WEBP", "webp"),
+            ("TIFF", "tiff"),
+            ("BMP", "bmp"),
             ("Png", "png"),
             ("Svg", "svg"),
             ("Pdf", "pdf"),
+            ("Webp", "webp"),
         ]
 
         smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
@@ -369,6 +429,279 @@ class TestFormatQualityAndOptions:
 
             assert opt_size > 0
             assert unopt_size > 0
+
+
+class TestNewImageFormats:
+    """Test the newly added image formats: WEBP, TIFF, BMP."""
+
+    def test_webp_format_basic(self):
+        """Test basic WebP format functionality."""
+        smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            webp_path = Path(temp_dir) / "test.webp"
+
+            image = render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="webp",
+                output_path=webp_path,
+            )
+
+            assert image is not None, "No image returned for WebP"
+            assert webp_path.exists(), "WebP file was not created"
+            assert webp_path.stat().st_size > 0, "WebP file is empty"
+
+    def test_tiff_format_basic(self):
+        """Test basic TIFF format functionality."""
+        smiles = SAMPLE_MOLECULES["smiles"]["benzene"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tiff_path = Path(temp_dir) / "test.tiff"
+
+            image = render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="tiff",
+                output_path=tiff_path,
+            )
+
+            assert image is not None, "No image returned for TIFF"
+            assert tiff_path.exists(), "TIFF file was not created"
+            assert tiff_path.stat().st_size > 0, "TIFF file is empty"
+
+    def test_bmp_format_basic(self):
+        """Test basic BMP format functionality."""
+        smiles = SAMPLE_MOLECULES["smiles"]["benzene"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bmp_path = Path(temp_dir) / "test.bmp"
+
+            image = render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="bmp",
+                output_path=bmp_path,
+            )
+
+            assert image is not None, "No image returned for BMP"
+            assert bmp_path.exists(), "BMP file was not created"
+            assert bmp_path.stat().st_size > 0, "BMP file is empty"
+
+    def test_webp_quality_settings(self):
+        """Test WebP quality settings affect file size."""
+        smiles = SAMPLE_MOLECULES["smiles"]["benzene"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            high_quality_path = Path(temp_dir) / "high_quality.webp"
+            low_quality_path = Path(temp_dir) / "low_quality.webp"
+
+            # High quality
+            from molecular_string_renderer.config import OutputConfig
+
+            high_config = OutputConfig(format="webp", quality=95)
+            render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="webp",
+                output_path=high_quality_path,
+                output_config=high_config,
+            )
+
+            # Low quality
+            low_config = OutputConfig(format="webp", quality=20)
+            render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="webp",
+                output_path=low_quality_path,
+                output_config=low_config,
+            )
+
+            # High quality should generally produce larger files
+            high_size = high_quality_path.stat().st_size
+            low_size = low_quality_path.stat().st_size
+
+            assert high_size > low_size, (
+                f"High quality ({high_size}) should be larger than low quality ({low_size})"
+            )
+
+    def test_tiff_compression_settings(self):
+        """Test TIFF compression settings."""
+        smiles = SAMPLE_MOLECULES["smiles"]["benzene"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            compressed_path = Path(temp_dir) / "compressed.tiff"
+            uncompressed_path = Path(temp_dir) / "uncompressed.tiff"
+
+            # Compressed
+            from molecular_string_renderer.config import OutputConfig
+
+            comp_config = OutputConfig(format="tiff", optimize=True)
+            render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="tiff",
+                output_path=compressed_path,
+                output_config=comp_config,
+            )
+
+            # Uncompressed
+            uncomp_config = OutputConfig(format="tiff", optimize=False)
+            render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="tiff",
+                output_path=uncompressed_path,
+                output_config=uncomp_config,
+            )
+
+            # Both should exist
+            assert compressed_path.exists()
+            assert uncompressed_path.exists()
+
+            # Files should have reasonable sizes
+            comp_size = compressed_path.stat().st_size
+            uncomp_size = uncompressed_path.stat().st_size
+
+            assert comp_size > 0
+            assert uncomp_size > 0
+
+    def test_bmp_no_transparency(self):
+        """Test that BMP correctly handles transparency by converting to RGB."""
+        smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
+
+        # First render to PNG to get an RGBA image
+        png_image = render_molecule(
+            molecular_string=smiles,
+            format_type="smiles",
+            output_format="png",
+            auto_filename=False,
+        )
+
+        # Ensure it's RGBA
+        assert png_image.mode == "RGBA", f"Expected RGBA mode, got {png_image.mode}"
+
+        # Now render to BMP
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bmp_path = Path(temp_dir) / "test.bmp"
+
+            bmp_image = render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="bmp",
+                output_path=bmp_path,
+            )
+
+            # BMP image should still be RGBA in memory (PIL Image object)
+            # but file should be created successfully
+            assert bmp_image is not None
+            assert bmp_path.exists()
+            assert bmp_path.stat().st_size > 0
+
+    def test_new_formats_extension_correction(self):
+        """Test that new format handlers auto-correct file extensions."""
+        smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Test WebP with wrong extension
+            webp_path = Path(temp_dir) / "molecule.wrongext"
+            render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="webp",
+                output_path=webp_path,
+            )
+            expected_webp = webp_path.with_suffix(".webp")
+            assert expected_webp.exists()
+
+            # Test TIFF with wrong extension
+            tiff_path = Path(temp_dir) / "molecule.wrongext2"
+            render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="tiff",
+                output_path=tiff_path,
+            )
+            expected_tiff = tiff_path.with_suffix(".tiff")
+            assert expected_tiff.exists()
+
+            # Test BMP with wrong extension
+            bmp_path = Path(temp_dir) / "molecule.wrongext3"
+            render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="bmp",
+                output_path=bmp_path,
+            )
+            expected_bmp = bmp_path.with_suffix(".bmp")
+            assert expected_bmp.exists()
+
+    def test_new_formats_memory_only(self):
+        """Test new formats work correctly in memory-only mode."""
+        formats = ["webp", "tiff", "bmp"]
+        smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
+
+        for fmt in formats:
+            image = render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format=fmt,
+                auto_filename=False,  # No file output
+            )
+
+            assert image is not None, f"No image returned for in-memory {fmt}"
+            assert hasattr(image, "size"), f"Invalid image object for {fmt}"
+            assert image.size[0] > 0 and image.size[1] > 0, f"Zero-size image for {fmt}"
+
+    def test_new_formats_cli_integration(self):
+        """Test new formats work through CLI format detection."""
+        from molecular_string_renderer.cli import determine_output_format
+
+        # Test format detection from extensions
+        test_cases = [
+            ("molecule.webp", None, "webp"),
+            ("molecule.tiff", None, "tiff"),
+            ("molecule.tif", None, "tiff"),
+            ("molecule.bmp", None, "bmp"),
+            (None, "webp", "webp"),
+            (None, "tiff", "tiff"),
+            (None, "bmp", "bmp"),
+        ]
+
+        for output_path, output_format, expected in test_cases:
+            detected_format = determine_output_format(output_path, output_format)
+            assert detected_format == expected, (
+                f"Wrong format detected: {detected_format}, expected {expected}"
+            )
+
+    def test_new_formats_with_different_molecules(self):
+        """Test new formats with different molecule types."""
+        test_cases = [
+            ("CCO", "smiles", "ethanol"),
+            ("CC(=O)O", "smiles", "acetic_acid"),
+            ("C1=CC=CC=C1", "smiles", "benzene"),
+        ]
+
+        formats = ["webp", "tiff", "bmp"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for fmt in formats:
+                for mol_string, format_type, name in test_cases:
+                    file_path = Path(temp_dir) / f"{name}.{fmt}"
+
+                    image = render_molecule(
+                        molecular_string=mol_string,
+                        format_type=format_type,
+                        output_format=fmt,
+                        output_path=file_path,
+                    )
+
+                    assert image is not None, f"No image returned for {name} in {fmt}"
+                    assert file_path.exists(), f"File not created for {name} in {fmt}"
+                    assert file_path.stat().st_size > 0, (
+                        f"Empty file for {name} in {fmt}"
+                    )
 
 
 class TestPDFFormatSpecific:
@@ -510,6 +843,48 @@ class TestPDFFormatSpecific:
         # Test case insensitive
         case_format = determine_output_format(None, "PDF")
         assert case_format == "pdf", f"Wrong case format: {case_format}"
+
+    def test_all_formats_cli_integration(self):
+        """Test all supported formats work through CLI format detection."""
+        from molecular_string_renderer.cli import determine_output_format
+
+        # Test format detection from extensions
+        extension_tests = [
+            ("molecule.png", None, "png"),
+            ("molecule.svg", None, "svg"),
+            ("molecule.jpg", None, "jpg"),
+            ("molecule.jpeg", None, "jpg"),
+            ("molecule.pdf", None, "pdf"),
+            ("molecule.webp", None, "webp"),
+            ("molecule.tiff", None, "tiff"),
+            ("molecule.tif", None, "tiff"),
+            ("molecule.bmp", None, "bmp"),
+        ]
+
+        for output_path, output_format, expected in extension_tests:
+            detected_format = determine_output_format(output_path, output_format)
+            assert detected_format == expected, (
+                f"Wrong format detected for {output_path}: {detected_format}, expected {expected}"
+            )
+
+        # Test explicit format specification
+        explicit_tests = [
+            (None, "png", "png"),
+            (None, "svg", "svg"),
+            (None, "jpg", "jpg"),
+            (None, "jpeg", "jpeg"),
+            (None, "pdf", "pdf"),
+            (None, "webp", "webp"),
+            (None, "tiff", "tiff"),
+            (None, "tif", "tif"),  # CLI passes "tif" through as-is when explicit
+            (None, "bmp", "bmp"),
+        ]
+
+        for output_path, output_format, expected in explicit_tests:
+            detected_format = determine_output_format(output_path, output_format)
+            assert detected_format == expected, (
+                f"Wrong explicit format: {detected_format}, expected {expected}"
+            )
 
 
 if __name__ == "__main__":

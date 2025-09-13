@@ -5,7 +5,7 @@ A flexible Python library for rendering molecular structures from various string
 ## Features
 
 - **Multiple Input Formats**: Support for SMILES, InChI, SELFIES, and MOL files
-- **Flexible Output**: PNG, SVG, JPEG, and PDF output formats with customizable quality
+- **Flexible Output**: PNG, SVG, JPEG, PDF, WebP, TIFF, and BMP output formats with customizable quality
 - **Modular Architecture**: Extensible design for adding new parsers and renderers
 - **High-Quality Rendering**: Publication-ready 2D molecular structure images
 - **Grid Layouts**: Render multiple molecules in organized grids
@@ -41,6 +41,9 @@ mol-render "CCO" -o ethanol.png
 # Different formats
 mol-render "CCO" --output-format svg
 mol-render "CCO" --output-format pdf
+mol-render "CCO" --output-format webp
+mol-render "CCO" --output-format tiff
+mol-render "CCO" --output-format bmp
 mol-render "InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3" --format inchi
 mol-render "[C][C][O]" --format selfies
 
@@ -127,6 +130,9 @@ grid = renderer.render_grid(molecules, legends=["Ethanol", "Acetic Acid", "Benze
 - **SVG** (`svg`): Scalable Vector Graphics
 - **JPEG** (`jpg`, `jpeg`): JPEG format (no transparency support)
 - **PDF** (`pdf`): Portable Document Format (publication-ready)
+- **WebP** (`webp`): Modern web format with efficient compression
+- **TIFF** (`tiff`, `tif`): Tagged Image File Format (high quality, supports transparency)
+- **BMP** (`bmp`): Bitmap format (uncompressed)
 
 ## Configuration Options
 
@@ -291,7 +297,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 ### Version 0.1.0
 - Initial release
 - Support for SMILES, InChI, SELFIES, and MOL format parsing
-- PNG, SVG, JPEG, and PDF output formats
+- PNG, SVG, JPEG, PDF, WebP, TIFF, and BMP output formats
 - Command-line interface for easy use
 - Modular architecture for extensibility
 - Comprehensive configuration system

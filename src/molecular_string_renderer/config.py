@@ -179,7 +179,7 @@ class OutputConfig(BaseModel):
         Raises:
             ValueError: If the format is not supported.
         """
-        supported = ["png", "svg", "jpg", "jpeg", "pdf"]
+        supported = ["png", "svg", "jpg", "jpeg", "pdf", "webp", "tiff", "tif", "bmp"]
         if v.lower() not in supported:
             raise ValueError(f"Unsupported format: {v}. Supported: {supported}")
         return v.lower()

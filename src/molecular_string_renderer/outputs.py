@@ -296,6 +296,124 @@ class JPEGOutput(OutputHandler):
         return buffer.getvalue()
 
 
+class WEBPOutput(OutputHandler):
+    """WEBP output handler."""
+
+    @property
+    def file_extension(self) -> str:
+        """Get WEBP file extension."""
+        return ".webp"
+
+    def save(self, image: Image.Image, output_path: str | Path) -> None:
+        """Save image as WEBP file."""
+        path = self._ensure_output_directory(output_path)
+
+        # Ensure WEBP extension
+        if not str(path).lower().endswith(".webp"):
+            path = path.with_suffix(".webp")
+
+        try:
+            image.save(
+                path, "WEBP", optimize=self.config.optimize, quality=self.config.quality
+            )
+            logger.info(f"Successfully saved WEBP to '{path}'")
+
+        except Exception as e:
+            logger.error(f"Failed to save WEBP to '{path}': {e}")
+            raise IOError(f"Failed to save WEBP to '{path}': {e}")
+
+    def get_bytes(self, image: Image.Image) -> bytes:
+        """Get image as WEBP bytes."""
+        buffer = BytesIO()
+        image.save(
+            buffer, "WEBP", optimize=self.config.optimize, quality=self.config.quality
+        )
+        return buffer.getvalue()
+
+
+class TIFFOutput(OutputHandler):
+    """TIFF output handler."""
+
+    @property
+    def file_extension(self) -> str:
+        """Get TIFF file extension."""
+        return ".tiff"
+
+    def save(self, image: Image.Image, output_path: str | Path) -> None:
+        """Save image as TIFF file."""
+        path = self._ensure_output_directory(output_path)
+
+        # Ensure TIFF extension
+        if not str(path).lower().endswith((".tiff", ".tif")):
+            path = path.with_suffix(".tiff")
+
+        try:
+            # TIFF supports transparency, so keep original mode
+            compression = "tiff_lzw" if self.config.optimize else None
+
+            # Quality is only supported with JPEG compression in TIFF
+            save_kwargs = {"format": "TIFF"}
+            if compression:
+                save_kwargs["compression"] = compression
+            # Don't pass quality for TIFF unless using JPEG compression
+
+            image.save(path, **save_kwargs)
+            logger.info(f"Successfully saved TIFF to '{path}'")
+
+        except Exception as e:
+            logger.error(f"Failed to save TIFF to '{path}': {e}")
+            raise IOError(f"Failed to save TIFF to '{path}': {e}")
+
+    def get_bytes(self, image: Image.Image) -> bytes:
+        """Get image as TIFF bytes."""
+        buffer = BytesIO()
+        compression = "tiff_lzw" if self.config.optimize else None
+
+        # Quality is only supported with JPEG compression in TIFF
+        save_kwargs = {"format": "TIFF"}
+        if compression:
+            save_kwargs["compression"] = compression
+        # Don't pass quality for TIFF unless using JPEG compression
+
+        image.save(buffer, **save_kwargs)
+        return buffer.getvalue()
+
+
+class BMPOutput(OutputHandler):
+    """BMP output handler."""
+
+    @property
+    def file_extension(self) -> str:
+        """Get BMP file extension."""
+        return ".bmp"
+
+    def save(self, image: Image.Image, output_path: str | Path) -> None:
+        """Save image as BMP file."""
+        path = self._ensure_output_directory(output_path)
+
+        # Ensure BMP extension
+        if not str(path).lower().endswith(".bmp"):
+            path = path.with_suffix(".bmp")
+
+        try:
+            # Convert to RGB (BMP doesn't support alpha channel)
+            save_image = image.convert("RGB")
+
+            save_image.save(path, "BMP")
+            logger.info(f"Successfully saved BMP to '{path}'")
+
+        except Exception as e:
+            logger.error(f"Failed to save BMP to '{path}': {e}")
+            raise IOError(f"Failed to save BMP to '{path}': {e}")
+
+    def get_bytes(self, image: Image.Image) -> bytes:
+        """Get image as BMP bytes."""
+        buffer = BytesIO()
+        save_image = image.convert("RGB")
+        save_image.save(buffer, "BMP")
+        return buffer.getvalue()
+
+
 class PDFOutput(OutputHandler):
     """PDF output handler using ReportLab."""
 
@@ -486,6 +604,10 @@ def get_output_handler(
         "jpg": JPEGOutput,
         "jpeg": JPEGOutput,
         "pdf": PDFOutput,
+        "webp": WEBPOutput,
+        "tiff": TIFFOutput,
+        "tif": TIFFOutput,  # Alternative extension for TIFF
+        "bmp": BMPOutput,
     }
 
     if format_type not in handlers:

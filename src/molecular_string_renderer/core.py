@@ -208,6 +208,10 @@ def get_supported_formats() -> dict[str, dict[str, str]]:
             "jpg": "JPEG image format",
             "jpeg": "JPEG image format (alternative extension)",
             "pdf": "Portable Document Format",
+            "webp": "WebP image format (modern, efficient compression)",
+            "tiff": "Tagged Image File Format (high quality, supports transparency)",
+            "tif": "TIFF image format (alternative extension)",
+            "bmp": "Bitmap image format (uncompressed)",
         },
         "renderer_types": {
             "2d": "2D molecular structure rendering",

@@ -268,13 +268,24 @@ class TestOutputConfigValidation:
             assert config.format == fmt
 
         # Case insensitive formats
-        case_variants = ["PNG", "SVG", "JPG", "JPEG", "PDF", "Png", "Svg"]
+        case_variants = [
+            "PNG",
+            "SVG",
+            "JPG",
+            "JPEG",
+            "PDF",
+            "WEBP",
+            "TIFF",
+            "BMP",
+            "Png",
+            "Svg",
+        ]
         for fmt in case_variants:
             config = OutputConfig(format=fmt)
             assert config.format == fmt.lower()
 
-        # Invalid formats
-        invalid_formats = ["gif", "bmp", "tiff", "webp", "invalid", ""]
+        # Invalid formats (now that webp, tiff, bmp are supported)
+        invalid_formats = ["gif", "ico", "psd", "invalid", ""]
         for fmt in invalid_formats:
             with pytest.raises(ValidationError) as exc_info:
                 OutputConfig(format=fmt)
