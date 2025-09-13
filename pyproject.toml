@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "molecular-string-renderer"
+version = "0.1.0"
+description = "A flexible library for rendering molecular structures from various string representations"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Hunter Heidenreich", email = "hunter@hunterheidenreich.com"},
+]
+keywords = ["chemistry", "molecules", "smiles", "visualization", "rdkit"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+    "rdkit",
+    "pillow>=10.0.0",
+    "pydantic>=2.0.0",
+]
+
+[project.scripts]
+mol-render = "molecular_string_renderer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/hunter-heidenreich/molecular-string-renderer"
+Repository = "https://github.com/hunter-heidenreich/molecular-string-renderer"
+Issues = "https://github.com/hunter-heidenreich/molecular-string-renderer/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/molecular_string_renderer"]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.13.0",
+]
