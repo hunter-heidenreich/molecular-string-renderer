@@ -1,6 +1,17 @@
 # Molecular String Renderer
 
+[![PyPI version](https://badge.fury.io/py/molecular-string-renderer.svg)](https://badge.fury.io/py/molecular-string-renderer)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A flexible Python library for rendering molecular structures from various string representations (SMILES, InChI, etc.) to high-quality images.
+
+## Quick Install & Try
+
+```bash
+pip install molecular-string-renderer
+mol-render "CCO" -o ethanol.png  # Creates ethanol molecule image
+```
 
 ## Features
 
@@ -15,8 +26,11 @@ A flexible Python library for rendering molecular structures from various string
 ## Installation
 
 ```bash
-# Install from PyPI (when published)
+# Install from PyPI
 pip install molecular-string-renderer
+
+# Or with uv (recommended)
+uv add molecular-string-renderer
 
 # Or install from source
 git clone https://github.com/hunter-heidenreich/molecular-string-renderer.git
