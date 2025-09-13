@@ -157,6 +157,14 @@ class OutputConfig(BaseModel):
     quality: int = Field(default=95, ge=1, le=100, description="Output quality (1-100)")
     optimize: bool = Field(default=True, description="Optimize output file size")
 
+    # SVG-specific options
+    svg_use_vector: bool = Field(
+        default=True, description="Use true vector SVG rendering"
+    )
+    svg_line_width_mult: int = Field(
+        default=1, ge=1, le=5, description="SVG line width multiplier"
+    )
+
     @field_validator("format")
     @classmethod
     def validate_format(cls, v):

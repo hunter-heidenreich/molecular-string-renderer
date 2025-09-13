@@ -61,6 +61,10 @@ def render_molecule(
     if output_path or auto_filename:
         output_handler = get_output_handler(output_format, output_config)
 
+        # For SVG output, provide the molecule for true vector rendering
+        if hasattr(output_handler, "set_molecule") and output_format.lower() == "svg":
+            output_handler.set_molecule(mol)
+
         if not output_path and auto_filename:
             # Generate safe filename
             base_name = create_safe_filename(
@@ -187,7 +191,7 @@ def get_supported_formats() -> dict[str, dict[str, str]]:
         },
         "output_formats": {
             "png": "Portable Network Graphics (recommended)",
-            "svg": "Scalable Vector Graphics",
+            "svg": "Scalable Vector Graphics (true vector format)",
             "jpg": "JPEG image format",
             "jpeg": "JPEG image format (alternative extension)",
         },

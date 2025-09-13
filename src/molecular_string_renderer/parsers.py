@@ -176,11 +176,27 @@ class MOLFileParser(MolecularParser):
         Raises:
             ValueError: If MOL data is invalid
         """
-        if isinstance(mol_data, (str, Path)):
-            mol_path = Path(mol_data)
-            if mol_path.exists():
-                # It's a file path
-                mol_data = mol_path.read_text()
+        # Handle Path objects directly
+        if isinstance(mol_data, Path):
+            if not mol_data.exists():
+                raise ValueError(f"MOL file does not exist: {mol_data}")
+            mol_data = mol_data.read_text()
+        elif isinstance(mol_data, str):
+            # Check if it's a file path - must be a single line without newlines
+            # and not contain typical MOL block content
+            if (
+                "\n" not in mol_data
+                and "\r" not in mol_data
+                and len(mol_data) < 200  # Reasonable path length
+                and not any(
+                    mol_keyword in mol_data
+                    for mol_keyword in ["V2000", "V3000", "M  END"]
+                )
+            ):
+                # Might be a file path
+                potential_path = Path(mol_data)
+                if potential_path.exists() and potential_path.is_file():
+                    mol_data = potential_path.read_text()
 
         if not mol_data or not mol_data.strip():
             raise ValueError("MOL data cannot be empty")
@@ -198,10 +214,27 @@ class MOLFileParser(MolecularParser):
     def validate(self, mol_data: str | Path) -> bool:
         """Check if data is valid MOL format."""
         try:
-            if isinstance(mol_data, (str, Path)):
-                mol_path = Path(mol_data)
-                if mol_path.exists():
-                    mol_data = mol_path.read_text()
+            # Handle Path objects directly
+            if isinstance(mol_data, Path):
+                if not mol_data.exists():
+                    return False
+                mol_data = mol_data.read_text()
+            elif isinstance(mol_data, str):
+                # Check if it's a file path - must be a single line without newlines
+                # and not contain typical MOL block content
+                if (
+                    "\n" not in mol_data
+                    and "\r" not in mol_data
+                    and len(mol_data) < 200  # Reasonable path length
+                    and not any(
+                        mol_keyword in mol_data
+                        for mol_keyword in ["V2000", "V3000", "M  END"]
+                    )
+                ):
+                    # Might be a file path
+                    potential_path = Path(mol_data)
+                    if potential_path.exists() and potential_path.is_file():
+                        mol_data = potential_path.read_text()
 
             mol = Chem.MolFromMolBlock(mol_data)
             return mol is not None
