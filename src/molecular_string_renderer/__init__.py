@@ -16,7 +16,12 @@ Example usage:
 """
 
 from molecular_string_renderer.config import RenderConfig, ParserConfig, OutputConfig
-from molecular_string_renderer.core import render_molecule, render_molecules_grid, validate_molecular_string, MolecularRenderer
+from molecular_string_renderer.core import (
+    render_molecule,
+    render_molecules_grid,
+    validate_molecular_string,
+    MolecularRenderer,
+)
 from molecular_string_renderer.outputs import PNGOutput, SVGOutput
 from molecular_string_renderer.parsers import SMILESParser
 from molecular_string_renderer.renderers import Molecule2DRenderer
@@ -26,7 +31,7 @@ __author__ = "Hunter Heidenreich"
 
 __all__ = [
     "render_molecule",
-    "render_molecules_grid", 
+    "render_molecules_grid",
     "validate_molecular_string",
     "MolecularRenderer",
     "SMILESParser",

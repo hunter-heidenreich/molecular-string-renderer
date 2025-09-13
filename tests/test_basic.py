@@ -14,7 +14,7 @@ from molecular_string_renderer.core import (
     get_supported_formats,
     validate_molecular_string,
 )
-from molecular_string_renderer.parsers import SMILESParser, get_parser
+from molecular_string_renderer.parsers import SMILESParser, SELFIESParser, get_parser
 
 
 class TestMolecularRendering:
@@ -118,10 +118,58 @@ class TestParsers:
         # Empty string is a special case - should be invalid
         assert parser.validate("") is False
 
+    def test_selfies_parser(self):
+        """Test SELFIES parser functionality."""
+        parser = SELFIESParser()
+
+        # Valid SELFIES
+        valid_selfies = [
+            "[C][C][O]",  # Ethanol
+            "[C][Branch1][C][C][C][O]",  # Propanol
+            "[C][=C][C][=C][C][=C][Ring1][=Branch1]",  # Benzene
+        ]
+        for selfies in valid_selfies:
+            mol = parser.parse(selfies)
+            assert mol is not None
+            assert parser.validate(selfies) is True
+
+        # Invalid SELFIES (malformed syntax)
+        invalid_selfies = [
+            "[C][C",
+            "[X][Y]",
+            "[Z][Z][Z]",
+        ]  # malformed bracket, invalid symbols
+        for selfies in invalid_selfies:
+            with pytest.raises(ValueError):
+                parser.parse(selfies)
+            assert parser.validate(selfies) is False
+
+        # Empty string is a special case - should be invalid
+        assert parser.validate("") is False
+
+    def test_selfies_rendering(self):
+        """Test rendering SELFIES strings."""
+        selfies = "[C][C][O]"  # Ethanol in SELFIES format
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "ethanol_selfies.png"
+
+            image = render_molecule(
+                molecular_string=selfies,
+                format_type="selfies",
+                output_format="png",
+                output_path=output_path,
+            )
+
+            # Check that image was created
+            assert image is not None
+            assert output_path.exists()
+            assert output_path.stat().st_size > 0
+
     def test_parser_factory(self):
         """Test parser factory function."""
         # Test supported formats
-        supported_formats = ["smiles", "smi"]
+        supported_formats = ["smiles", "smi", "selfies"]
 
         for fmt in supported_formats:
             parser = get_parser(fmt)
@@ -145,6 +193,15 @@ class TestValidation:
         assert validate_molecular_string("INVALID", "smiles") is False
         assert validate_molecular_string("", "smiles") is False
 
+        # Valid SELFIES
+        assert validate_molecular_string("[C][C][O]", "selfies") is True
+        assert validate_molecular_string("[C][Branch1][C][C][C][O]", "selfies") is True
+
+        # Invalid SELFIES
+        assert validate_molecular_string("[C][C", "selfies") is False
+        assert validate_molecular_string("[X][Y]", "selfies") is False
+        assert validate_molecular_string("", "selfies") is False
+
     def test_supported_formats(self):
         """Test getting supported formats."""
         formats = get_supported_formats()
@@ -155,6 +212,7 @@ class TestValidation:
 
         # Check some expected formats
         assert "smiles" in formats["input_formats"]
+        assert "selfies" in formats["input_formats"]
         assert "png" in formats["output_formats"]
         assert "2d" in formats["renderer_types"]
 

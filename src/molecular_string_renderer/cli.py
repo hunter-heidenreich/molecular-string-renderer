@@ -43,8 +43,9 @@ Examples:
   %(prog)s "CCO" --size 800 --background-color "#f0f0f0"    # Large image with custom background
 
 Common molecular formats:
-  SMILES:  CCO (ethanol), CC(=O)O (acetic acid), C1=CC=CC=C1 (benzene)
-  InChI:   InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3 (ethanol)
+  SMILES:   CCO (ethanol), CC(=O)O (acetic acid), C1=CC=CC=C1 (benzene)
+  InChI:    InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3 (ethanol)
+  SELFIES:  [C][C][O] (ethanol), [C][C][=Branch1][C][=O][O] (acetic acid)
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -70,7 +71,7 @@ Common molecular formats:
         dest="input_format",
         type=str,
         default="smiles",
-        choices=["smiles", "smi", "inchi", "mol"],
+        choices=["smiles", "smi", "inchi", "mol", "selfies"],
         help="Input molecular format (default: smiles)",
     )
 

@@ -4,7 +4,7 @@ A flexible Python library for rendering molecular structures from various string
 
 ## Features
 
-- **Multiple Input Formats**: Support for SMILES, InChI, and MOL files
+- **Multiple Input Formats**: Support for SMILES, InChI, SELFIES, and MOL files
 - **Flexible Output**: PNG, SVG, and JPEG output formats with customizable quality
 - **Modular Architecture**: Extensible design for adding new parsers and renderers
 - **High-Quality Rendering**: Publication-ready 2D molecular structure images
@@ -41,6 +41,7 @@ mol-render "CCO" -o ethanol.png
 # Different formats
 mol-render "CCO" --output-format svg
 mol-render "InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3" --format inchi
+mol-render "[C][C][O]" --format selfies
 
 # Grid of molecules
 mol-render --grid "CCO,CC(=O)O,C1=CC=CC=C1" --legends "Ethanol,Acetic acid,Benzene"
@@ -84,6 +85,13 @@ grid_image = render_molecules_grid(
     mols_per_row=3,
     output_path="molecules_grid.png"
 )
+
+# SELFIES example
+selfies_mol = render_molecule(
+    "[C][C][O]", 
+    format_type="selfies",
+    output_format="png"
+)
 ```
 ```
 
@@ -111,6 +119,7 @@ grid = renderer.render_grid(molecules, legends=["Ethanol", "Acetic Acid", "Benze
 
 - **SMILES** (`smiles`, `smi`): Simplified Molecular Input Line Entry System
 - **InChI** (`inchi`): International Chemical Identifier
+- **SELFIES** (`selfies`): Self-Referencing Embedded Strings
 - **MOL** (`mol`): MOL file format
 
 ### Output Formats
@@ -195,6 +204,9 @@ is_invalid = validate_molecular_string("INVALID", "smiles")  # False
 
 # Validate InChI
 inchi_valid = validate_molecular_string("InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3", "inchi")
+
+# Validate SELFIES
+selfies_valid = validate_molecular_string("[C][C][O]", "selfies")  # True
 ```
 
 ### Batch Processing
@@ -263,6 +275,7 @@ mypy src/
 - **RDKit**: Molecular informatics toolkit for parsing and coordinate generation
 - **Pillow**: Python Imaging Library for image processing
 - **Pydantic**: Data validation and configuration management
+- **SELFIES**: Self-Referencing Embedded Strings for robust molecular representation
 
 ## License
 
@@ -276,7 +289,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ### Version 0.1.0
 - Initial release
-- Support for SMILES, InChI, and MOL format parsing
+- Support for SMILES, InChI, SELFIES, and MOL format parsing
 - PNG, SVG, and JPEG output formats
 - Command-line interface for easy use
 - Modular architecture for extensibility

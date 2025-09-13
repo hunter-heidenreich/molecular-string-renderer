@@ -183,6 +183,7 @@ def get_supported_formats() -> dict[str, dict[str, str]]:
             "inchi": "International Chemical Identifier",
             "mol": "MOL file format",
             "sdf": "Structure Data File format",
+            "selfies": "Self-Referencing Embedded Strings",
         },
         "output_formats": {
             "png": "Portable Network Graphics (recommended)",
