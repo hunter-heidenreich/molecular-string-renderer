@@ -119,20 +119,33 @@ def render_molecules_grid(
     # Parse all molecules
     parser = get_parser(format_type, parser_config)
     mols = []
+    valid_indices = []  # Track which molecules were successfully parsed
 
-    for mol_string in molecular_strings:
+    for i, mol_string in enumerate(molecular_strings):
         try:
             mol = parser.parse(mol_string)
             mols.append(mol)
+            valid_indices.append(i)
         except Exception as e:
             logging.warning(f"Failed to parse '{mol_string}': {e}")
-            # Add None placeholder to maintain grid alignment
-            mols.append(None)
+            # Don't add None - just skip invalid molecules
 
-    # Filter out None molecules
-    valid_mols = [mol for mol in mols if mol is not None]
+    # Filter legends to match valid molecules if provided
+    if legends and valid_indices:
+        if len(legends) != len(molecular_strings):
+            logging.warning(
+                f"Number of legends ({len(legends)}) doesn't match number of molecules ({len(molecular_strings)})"
+            )
+        # Filter legends to only include those for valid molecules
+        filtered_legends = [legends[i] for i in valid_indices if i < len(legends)]
+        # If we still have a mismatch, set legends to None
+        if len(filtered_legends) != len(mols):
+            logging.warning("Legend count mismatch after filtering, disabling legends")
+            legends = None
+        else:
+            legends = filtered_legends
 
-    if not valid_mols:
+    if not mols:
         raise ValueError("No valid molecules could be parsed")
 
     # Create grid renderer
@@ -143,7 +156,7 @@ def render_molecules_grid(
     )
 
     # Render grid
-    image = grid_renderer.render_grid(valid_mols, legends)
+    image = grid_renderer.render_grid(mols, legends)
 
     # Save if output path provided
     if output_path:
@@ -194,6 +207,7 @@ def get_supported_formats() -> dict[str, dict[str, str]]:
             "svg": "Scalable Vector Graphics (true vector format)",
             "jpg": "JPEG image format",
             "jpeg": "JPEG image format (alternative extension)",
+            "pdf": "Portable Document Format",
         },
         "renderer_types": {
             "2d": "2D molecular structure rendering",

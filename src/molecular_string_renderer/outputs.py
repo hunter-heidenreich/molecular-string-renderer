@@ -296,6 +296,151 @@ class JPEGOutput(OutputHandler):
         return buffer.getvalue()
 
 
+class PDFOutput(OutputHandler):
+    """PDF output handler using ReportLab."""
+
+    @property
+    def file_extension(self) -> str:
+        """Get PDF file extension."""
+        return ".pdf"
+
+    def save(self, image: Image.Image, output_path: str | Path) -> None:
+        """Save image as PDF file."""
+        path = self._ensure_output_directory(output_path)
+
+        if not str(path).lower().endswith(".pdf"):
+            path = path.with_suffix(".pdf")
+
+        try:
+            # Import reportlab modules
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib.units import inch
+            from reportlab.pdfgen import canvas
+
+            # Create a canvas for the PDF
+            c = canvas.Canvas(str(path), pagesize=letter)
+
+            # Get page dimensions
+            page_width, page_height = letter
+
+            # Calculate image dimensions to fit on page with some margin
+            margin = 0.5 * inch
+            max_width = page_width - 2 * margin
+            max_height = page_height - 2 * margin
+
+            # Convert PIL image to RGB if it isn't already
+            rgb_image = image.convert("RGB")
+
+            # Calculate scale factor to fit image on page
+            img_width, img_height = rgb_image.size
+            scale_x = max_width / img_width
+            scale_y = max_height / img_height
+            scale = min(scale_x, scale_y)
+
+            # Calculate actual dimensions
+            actual_width = img_width * scale
+            actual_height = img_height * scale
+
+            # Calculate position to center the image
+            x = (page_width - actual_width) / 2
+            y = (page_height - actual_height) / 2
+
+            # Save image to temporary buffer for embedding
+            img_buffer = BytesIO()
+            rgb_image.save(img_buffer, format="PNG")
+            img_buffer.seek(0)
+
+            # Draw the image on the PDF using the buffer directly
+            from reportlab.lib.utils import ImageReader
+
+            img_reader = ImageReader(img_buffer)
+            c.drawImage(
+                img_reader,
+                x,
+                y,
+                width=actual_width,
+                height=actual_height,
+                preserveAspectRatio=True,
+            )
+
+            # Save the PDF
+            c.save()
+            logger.info(f"Successfully saved PDF to '{path}'")
+
+        except ImportError as e:
+            logger.error(f"ReportLab not available for PDF generation: {e}")
+            raise IOError(f"ReportLab not available for PDF generation: {e}")
+        except Exception as e:
+            logger.error(f"Failed to save PDF to '{path}': {e}")
+            raise IOError(f"Failed to save PDF to '{path}': {e}")
+
+    def get_bytes(self, image: Image.Image) -> bytes:
+        """Get image as PDF bytes."""
+        try:
+            # Import reportlab modules
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib.units import inch
+            from reportlab.pdfgen import canvas
+
+            # Create a canvas for the PDF in memory
+            buffer = BytesIO()
+            c = canvas.Canvas(buffer, pagesize=letter)
+
+            # Get page dimensions
+            page_width, page_height = letter
+
+            # Calculate image dimensions to fit on page with some margin
+            margin = 0.5 * inch
+            max_width = page_width - 2 * margin
+            max_height = page_height - 2 * margin
+
+            # Convert PIL image to RGB if it isn't already
+            rgb_image = image.convert("RGB")
+
+            # Calculate scale factor to fit image on page
+            img_width, img_height = rgb_image.size
+            scale_x = max_width / img_width
+            scale_y = max_height / img_height
+            scale = min(scale_x, scale_y)
+
+            # Calculate actual dimensions
+            actual_width = img_width * scale
+            actual_height = img_height * scale
+
+            # Calculate position to center the image
+            x = (page_width - actual_width) / 2
+            y = (page_height - actual_height) / 2
+
+            # Save image to temporary buffer for embedding
+            img_buffer = BytesIO()
+            rgb_image.save(img_buffer, format="PNG")
+            img_buffer.seek(0)
+
+            # Draw the image on the PDF using the buffer directly
+            from reportlab.lib.utils import ImageReader
+
+            img_reader = ImageReader(img_buffer)
+            c.drawImage(
+                img_reader,
+                x,
+                y,
+                width=actual_width,
+                height=actual_height,
+                preserveAspectRatio=True,
+            )
+
+            # Save the PDF and get bytes
+            c.save()
+            return buffer.getvalue()
+
+        except ImportError as e:
+            logger.error(f"ReportLab not available for PDF generation: {e}")
+            raise IOError(f"ReportLab not available for PDF generation: {e}")
+        except Exception as e:
+            logger.error(f"Failed to generate PDF bytes: {e}")
+            raise IOError(f"Failed to generate PDF bytes: {e}")
+
+
 def create_safe_filename(molecular_string: str, extension: str = ".png") -> str:
     """
     Generate a filesystem-safe filename from a molecular string using MD5 hash.
@@ -324,7 +469,7 @@ def get_output_handler(
     Factory function to get appropriate output handler.
 
     Args:
-        format_type: Output format type ('png', 'svg', 'jpg', 'jpeg')
+        format_type: Output format type ('png', 'svg', 'jpg', 'jpeg', 'pdf')
         config: Output configuration
 
     Returns:
@@ -340,6 +485,7 @@ def get_output_handler(
         "svg": SVGOutput,
         "jpg": JPEGOutput,
         "jpeg": JPEGOutput,
+        "pdf": PDFOutput,
     }
 
     if format_type not in handlers:

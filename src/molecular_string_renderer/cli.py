@@ -23,6 +23,17 @@ from molecular_string_renderer.core import (
 logger = logging.getLogger(__name__)
 
 
+def normalize_format(value: str) -> str:
+    """Normalize format input to lowercase."""
+    normalized = value.lower().strip()
+    valid_formats = ["smiles", "smi", "inchi", "mol", "selfies"]
+    if normalized not in valid_formats:
+        raise argparse.ArgumentTypeError(
+            f"invalid choice: '{value}' (choose from {valid_formats})"
+        )
+    return normalized
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure the command-line argument parser.
 
@@ -69,10 +80,9 @@ Common molecular formats:
         "--format",
         "--input-format",
         dest="input_format",
-        type=str,
+        type=normalize_format,
         default="smiles",
-        choices=["smiles", "smi", "inchi", "mol", "selfies"],
-        help="Input molecular format (default: smiles)",
+        help="Input molecular format (default: smiles). Case-insensitive.",
     )
 
     input_group.add_argument(
@@ -101,7 +111,7 @@ Common molecular formats:
     output_group.add_argument(
         "--output-format",
         type=str,
-        choices=["png", "svg", "jpg", "jpeg"],
+        choices=["png", "svg", "jpg", "jpeg", "pdf"],
         help="Output image format (default: inferred from filename or png)",
     )
 
@@ -252,6 +262,7 @@ def determine_output_format(output_path: str | None, output_format: str | None) 
             ".svg": "svg",
             ".jpg": "jpg",
             ".jpeg": "jpg",
+            ".pdf": "pdf",
         }
         return format_map.get(suffix, "png")
 
@@ -385,12 +396,10 @@ def handle_single_rendering(args, render_config, parser_config, output_config) -
     if args.validate:
         is_valid = validate_molecular_string(args.molecular_string, args.input_format)
         if is_valid:
-            logger.info(f"✓ Valid {args.input_format.upper()}: {args.molecular_string}")
+            print(f"✓ Valid {args.input_format.upper()}: {args.molecular_string}")
             sys.exit(0)
         else:
-            logger.error(
-                f"✗ Invalid {args.input_format.upper()}: {args.molecular_string}"
-            )
+            print(f"✗ Invalid {args.input_format.upper()}: {args.molecular_string}")
             sys.exit(1)
 
     try:

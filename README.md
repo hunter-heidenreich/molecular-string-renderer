@@ -5,7 +5,7 @@ A flexible Python library for rendering molecular structures from various string
 ## Features
 
 - **Multiple Input Formats**: Support for SMILES, InChI, SELFIES, and MOL files
-- **Flexible Output**: PNG, SVG, and JPEG output formats with customizable quality
+- **Flexible Output**: PNG, SVG, JPEG, and PDF output formats with customizable quality
 - **Modular Architecture**: Extensible design for adding new parsers and renderers
 - **High-Quality Rendering**: Publication-ready 2D molecular structure images
 - **Grid Layouts**: Render multiple molecules in organized grids
@@ -40,6 +40,7 @@ mol-render "CCO" -o ethanol.png
 
 # Different formats
 mol-render "CCO" --output-format svg
+mol-render "CCO" --output-format pdf
 mol-render "InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3" --format inchi
 mol-render "[C][C][O]" --format selfies
 
@@ -52,7 +53,6 @@ mol-render "CCO" --size 800 --background-color "#f0f0f0" --show-hydrogen
 
 ### Python API
 
-```python
 ```python
 from molecular_string_renderer import render_molecule, render_molecules_grid, RenderConfig
 
@@ -93,7 +93,6 @@ selfies_mol = render_molecule(
     output_format="png"
 )
 ```
-```
 
 ### Object-Oriented Interface
 
@@ -127,6 +126,7 @@ grid = renderer.render_grid(molecules, legends=["Ethanol", "Acetic Acid", "Benze
 - **PNG** (`png`): Portable Network Graphics (recommended for most uses)
 - **SVG** (`svg`): Scalable Vector Graphics
 - **JPEG** (`jpg`, `jpeg`): JPEG format (no transparency support)
+- **PDF** (`pdf`): Portable Document Format (publication-ready)
 
 ## Configuration Options
 
@@ -276,6 +276,7 @@ mypy src/
 - **Pillow**: Python Imaging Library for image processing
 - **Pydantic**: Data validation and configuration management
 - **SELFIES**: Self-Referencing Embedded Strings for robust molecular representation
+- **ReportLab**: PDF generation library for high-quality document output
 
 ## License
 
@@ -290,7 +291,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 ### Version 0.1.0
 - Initial release
 - Support for SMILES, InChI, SELFIES, and MOL format parsing
-- PNG, SVG, and JPEG output formats
+- PNG, SVG, JPEG, and PDF output formats
 - Command-line interface for easy use
 - Modular architecture for extensibility
 - Comprehensive configuration system
@@ -300,3 +301,11 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 - Built on the excellent [RDKit](https://www.rdkit.org/) cheminformatics toolkit
 - Inspired by the need for flexible, publication-quality molecular visualization tools
+
+## References
+
+- Greg Landrum, Paolo Tosco, Brian Kelley, Ricardo Rodriguez, David Cosgrove, Riccardo Vianello, sriniker, Peter Gedeck, Gareth Jones, Eisuke Kawashima, NadineSchneider, Dan Nealschneider, Andrew Dalke, tadhurst-cdd, Matt Swain, Brian Cole, Samo Turk, Aleksandr Savelev, Alain Vaucher, … Juuso Lehtivarjo. (2025). rdkit/rdkit: 2025_03_6 (Q1 2025) Release (Release_2025_03_6). Zenodo. https://doi.org/10.5281/zenodo.16996017
+
+- Krenn, M., Häse, F., Nigam, A., Friederich, P., & Aspuru-Guzik, A. (2020). Self-referencing embedded strings (SELFIES): A 100% robust molecular string representation. Machine Learning: Science and Technology, 1(4), 045024. https://doi.org/10.1088/2632-2153/aba947
+
+- Lo, A., Pollice, R., Nigam, A., White, A. D., Krenn, M., & Aspuru-Guzik, A. (2023). Recent advances in the self-referencing embedded strings (SELFIES) library. Digital Discovery, 2(4), 897–908. https://doi.org/10.1039/D3DD00044C

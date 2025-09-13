@@ -22,7 +22,7 @@ class TestAllSupportedOutputFormats:
     def test_cli_supported_formats(self):
         """Test all formats supported by CLI can be rendered."""
         # These are the formats from cli.py choices
-        cli_formats = ["png", "svg", "jpg", "jpeg"]
+        cli_formats = ["png", "svg", "jpg", "jpeg", "pdf"]
         smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -43,8 +43,8 @@ class TestAllSupportedOutputFormats:
     def test_config_supported_formats(self):
         """Test all formats from OutputConfig validation."""
         # These are from config.py OutputConfig.validate_format()
-        # Only test the ones that have implementations
-        implemented_formats = ["png", "svg", "jpg", "jpeg"]
+        # All formats should now be implemented including PDF
+        implemented_formats = ["png", "svg", "jpg", "jpeg", "pdf"]
         smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -61,10 +61,6 @@ class TestAllSupportedOutputFormats:
                 assert image is not None, f"No image returned for {fmt}"
                 assert output_path.exists(), f"Output file not created for {fmt}"
                 assert output_path.stat().st_size > 0, f"Empty output file for {fmt}"
-
-        # Test that PDF is NOT implemented (should fail)
-        with pytest.raises(ValueError, match="Unsupported output format"):
-            get_output_handler("pdf")
 
     def test_get_supported_formats_output_formats(self):
         """Test all formats returned by get_supported_formats() can be rendered."""
@@ -136,6 +132,7 @@ class TestAllSupportedOutputFormats:
             "svg": ".svg",
             "jpg": ".jpg",
             "jpeg": ".jpg",  # JPEG handler uses .jpg extension
+            "pdf": ".pdf",
         }
 
         for fmt, expected_ext in expected_extensions.items():
@@ -172,9 +169,21 @@ class TestAllSupportedOutputFormats:
             # Should accept .jpeg extension for jpg format
             assert jpeg_path.exists()
 
+            # Test PDF with wrong extension
+            pdf_path = Path(temp_dir) / "molecule.wrongext2"
+            render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="pdf",
+                output_path=pdf_path,
+            )
+            # Should create file with .pdf extension
+            expected_pdf = pdf_path.with_suffix(".pdf")
+            assert expected_pdf.exists()
+
     def test_memory_only_rendering_all_formats(self):
         """Test in-memory rendering for all formats (no file output)."""
-        formats = ["png", "svg", "jpg", "jpeg"]
+        formats = ["png", "svg", "jpg", "jpeg", "pdf"]
         smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
 
         for fmt in formats:
@@ -241,17 +250,9 @@ class TestUnsupportedFormats:
                     output_format=fmt,
                 )
 
-        # PDF is listed in config validation but not implemented in output handlers
-        with pytest.raises(ValueError, match="Unsupported output format"):
-            render_molecule(
-                molecular_string=smiles,
-                format_type="smiles",
-                output_format="pdf",
-            )
-
     def test_output_handler_factory_errors(self):
         """Test that output handler factory rejects unsupported formats."""
-        unsupported_formats = ["bmp", "tiff", "webp", "gif", "pdf", "invalid"]
+        unsupported_formats = ["bmp", "tiff", "webp", "gif", "invalid"]
 
         for fmt in unsupported_formats:
             with pytest.raises(ValueError, match="Unsupported output format"):
@@ -264,8 +265,10 @@ class TestUnsupportedFormats:
             ("SVG", "svg"),
             ("JPG", "jpg"),
             ("JPEG", "jpeg"),
+            ("PDF", "pdf"),
             ("Png", "png"),
             ("Svg", "svg"),
+            ("Pdf", "pdf"),
         ]
 
         smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
@@ -366,6 +369,147 @@ class TestFormatQualityAndOptions:
 
             assert opt_size > 0
             assert unopt_size > 0
+
+
+class TestPDFFormatSpecific:
+    """Test PDF-specific functionality."""
+
+    def test_pdf_basic_rendering(self):
+        """Test basic PDF rendering functionality."""
+        smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pdf_path = Path(temp_dir) / "test.pdf"
+
+            image = render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="pdf",
+                output_path=pdf_path,
+            )
+
+            assert image is not None, "No image returned for PDF"
+            assert pdf_path.exists(), "PDF file was not created"
+            assert pdf_path.stat().st_size > 1000, "PDF file seems too small"
+
+            # Check that it's actually a PDF file by reading the header
+            with open(pdf_path, "rb") as f:
+                header = f.read(4)
+                assert header == b"%PDF", "File doesn't have PDF header"
+
+    def test_pdf_memory_only(self):
+        """Test PDF rendering in memory without file output."""
+        smiles = SAMPLE_MOLECULES["smiles"]["benzene"]
+
+        image = render_molecule(
+            molecular_string=smiles,
+            format_type="smiles",
+            output_format="pdf",
+            auto_filename=False,  # No file output
+        )
+
+        assert image is not None, "No image returned for in-memory PDF"
+        assert hasattr(image, "size"), "Invalid image object for PDF"
+        assert image.size[0] > 0 and image.size[1] > 0, "Zero-size image for PDF"
+
+    def test_pdf_with_different_molecules(self):
+        """Test PDF rendering with different molecule types."""
+        test_cases = [
+            ("CCO", "smiles", "ethanol"),
+            ("CC(=O)O", "smiles", "acetic_acid"),
+            ("C1=CC=CC=C1", "smiles", "benzene"),
+        ]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for mol_string, format_type, name in test_cases:
+                pdf_path = Path(temp_dir) / f"{name}.pdf"
+
+                image = render_molecule(
+                    molecular_string=mol_string,
+                    format_type=format_type,
+                    output_format="pdf",
+                    output_path=pdf_path,
+                )
+
+                assert image is not None, f"No image returned for {name}"
+                assert pdf_path.exists(), f"PDF file not created for {name}"
+                assert pdf_path.stat().st_size > 1000, f"PDF too small for {name}"
+
+                # Verify PDF header
+                with open(pdf_path, "rb") as f:
+                    header = f.read(4)
+                    assert header == b"%PDF", f"Invalid PDF header for {name}"
+
+    def test_pdf_with_custom_config(self):
+        """Test PDF rendering with custom render configuration."""
+        smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
+
+        from molecular_string_renderer.config import RenderConfig
+
+        custom_config = RenderConfig(
+            width=600,
+            height=800,
+            background_color="lightblue",
+            dpi=200,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pdf_path = Path(temp_dir) / "custom_config.pdf"
+
+            image = render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="pdf",
+                output_path=pdf_path,
+                render_config=custom_config,
+            )
+
+            assert image is not None, "No image returned for custom config PDF"
+            assert pdf_path.exists(), "PDF file not created with custom config"
+            assert pdf_path.stat().st_size > 1000, "PDF too small with custom config"
+
+            # Check image dimensions match config
+            assert image.size == (600, 800), (
+                f"Wrong image size: got {image.size}, expected (600, 800)"
+            )
+
+    def test_pdf_extension_auto_correction(self):
+        """Test that PDF handler auto-corrects file extensions."""
+        smiles = SAMPLE_MOLECULES["smiles"]["ethanol"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Use wrong extension
+            wrong_path = Path(temp_dir) / "molecule.wrong"
+
+            render_molecule(
+                molecular_string=smiles,
+                format_type="smiles",
+                output_format="pdf",
+                output_path=wrong_path,
+            )
+
+            # Should create file with .pdf extension
+            expected_path = wrong_path.with_suffix(".pdf")
+            assert expected_path.exists(), (
+                "PDF file not created with corrected extension"
+            )
+            assert not wrong_path.exists(), "File with wrong extension should not exist"
+
+    def test_pdf_cli_integration(self):
+        """Test PDF format works through CLI format detection."""
+        from molecular_string_renderer.cli import determine_output_format
+
+        # Test format detection from .pdf extension
+        detected_format = determine_output_format("molecule.pdf", None)
+        assert detected_format == "pdf", f"Wrong format detected: {detected_format}"
+
+        # Test explicit PDF format
+        explicit_format = determine_output_format(None, "pdf")
+        assert explicit_format == "pdf", f"Wrong explicit format: {explicit_format}"
+
+        # Test case insensitive
+        case_format = determine_output_format(None, "PDF")
+        assert case_format == "pdf", f"Wrong case format: {case_format}"
 
 
 if __name__ == "__main__":
