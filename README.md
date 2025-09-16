@@ -306,6 +306,14 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## Changelog
 
+### Version 0.2.0
+- Enhanced SELFIES support with improved parsing
+- Proper SVG rendering with better quality output
+- Additional testing and validation improvements
+- Code simplifications and optimizations
+- Package now available on PyPI
+- Improved documentation and examples
+
 ### Version 0.1.0
 - Initial release
 - Support for SMILES, InChI, SELFIES, and MOL format parsing

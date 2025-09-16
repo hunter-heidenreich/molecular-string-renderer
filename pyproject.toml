@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "molecular-string-renderer"
-version = "0.1.0"
+version = "0.2.0"
 description = "A flexible library for rendering molecular structures from various string representations"
 readme = "README.md"
 requires-python = ">=3.10"

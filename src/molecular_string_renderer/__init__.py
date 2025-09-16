@@ -26,7 +26,7 @@ from molecular_string_renderer.outputs import PNGOutput, SVGOutput
 from molecular_string_renderer.parsers import SMILESParser
 from molecular_string_renderer.renderers import Molecule2DRenderer
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Hunter Heidenreich"
 
 __all__ = [
