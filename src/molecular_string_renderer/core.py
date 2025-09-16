@@ -48,6 +48,16 @@ def render_molecule(
     render_config = render_config or RenderConfig()
     parser_config = parser_config or ParserConfig()
     output_config = output_config or OutputConfig(format=output_format)
+    
+    # Auto-coordinate hydrogen display settings
+    # If show_hydrogen is True but parser is configured to remove hydrogens,
+    # we need to ensure hydrogens are kept in the molecule
+    if render_config.show_hydrogen and parser_config.remove_hs:
+        # Create a new parser config with show_hydrogen=True to keep hydrogens
+        parser_config = ParserConfig(
+            sanitize=parser_config.sanitize,
+            show_hydrogen=True,  # Keep hydrogens for display
+        )
 
     # Parse the molecular string
     parser = get_parser(format_type, parser_config)

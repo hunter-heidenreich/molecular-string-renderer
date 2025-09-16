@@ -227,7 +227,7 @@ class TestConfiguration:
         assert config.width == 500
         assert config.height == 500
         assert config.background_color == "white"
-        assert config.antialias is True
+        assert config.dpi == 150
         assert config.show_hydrogen is False
 
     def test_render_config_validation(self):
@@ -245,12 +245,11 @@ class TestConfiguration:
     def test_config_to_rdkit_options(self):
         """Test conversion to RDKit options."""
         config = RenderConfig(
-            bond_line_width=3.0, show_carbon=True, highlight_atoms=[0, 1, 2]
+            show_carbon=True, highlight_atoms=[0, 1, 2]
         )
 
         rdkit_options = config.to_rdkit_options()
 
-        assert rdkit_options["bondLineWidth"] == 3.0
         assert rdkit_options["explicitMethyl"] is True
         assert rdkit_options["highlightAtoms"] == [0, 1, 2]
 

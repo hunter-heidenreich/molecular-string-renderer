@@ -210,12 +210,6 @@ Common molecular formats:
         help="Disable output optimization",
     )
 
-    quality_group.add_argument(
-        "--no-antialias",
-        action="store_true",
-        help="Disable antialiasing",
-    )
-
     # Utility options
     util_group = parser.add_argument_group("Utility Options")
 
@@ -292,15 +286,13 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
         height=height,
         background_color=args.background_color,
         dpi=args.dpi,
-        antialias=not args.no_antialias,
         show_hydrogen=args.show_hydrogen,
         show_carbon=args.show_carbon,
     )
 
     parser_config = ParserConfig(
         sanitize=True,
-        remove_hs=not args.show_hydrogen,
-        strict=False,
+        show_hydrogen=args.show_hydrogen,
     )
 
     output_format = determine_output_format(args.output, args.output_format)

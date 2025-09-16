@@ -159,9 +159,6 @@ config = RenderConfig(
     width=500,                    # Image width in pixels
     height=500,                   # Image height in pixels
     background_color="white",     # Background color (name or hex)
-    atom_label_font_size=12,      # Font size for atom labels
-    bond_line_width=2.0,          # Bond line width
-    antialias=True,               # Enable antialiasing
     dpi=150,                      # DPI for high-quality output
     show_hydrogen=False,          # Show explicit hydrogens
     show_carbon=False,            # Show carbon labels
@@ -177,8 +174,8 @@ from molecular_string_renderer import ParserConfig
 
 parser_config = ParserConfig(
     sanitize=True,                # Sanitize molecules after parsing
-    remove_hs=True,               # Remove explicit hydrogens
-    strict=False,                 # Use strict parsing (fail on warnings)
+    show_hydrogen=False,          # Show explicit hydrogens (controls hydrogen removal)
+)
 )
 ```
 
@@ -191,6 +188,7 @@ output_config = OutputConfig(
     format="png",                 # Output format
     quality=95,                   # Quality (1-100)
     optimize=True,                # Optimize file size
+    svg_sanitize=True,            # Sanitize SVG output for security
 )
 ```
 

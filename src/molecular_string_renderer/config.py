@@ -12,20 +12,14 @@ from pydantic import BaseModel, Field, field_validator
 class RenderConfig(BaseModel):
     """Configuration for molecular rendering options.
 
-    This class defines all the rendering parameters that control how molecular
-    structures are visualized, including image dimensions, colors, fonts, and
-    display options.
+    This class defines the essential rendering parameters that control how molecular
+    structures are visualized.
 
     Attributes:
         width: Image width in pixels (100-2000).
         height: Image height in pixels (100-2000).
         background_color: Background color (name or hex code).
-        atom_label_font_size: Font size for atom labels (6-48).
-        bond_line_width: Bond line width (0.5-10.0).
-        antialias: Enable antialiasing for smoother rendering.
         dpi: DPI for high-quality output (72-600).
-        png_optimize: Optimize PNG files for smaller size.
-        svg_sanitize: Sanitize SVG output for security.
         show_hydrogen: Show explicit hydrogen atoms.
         show_carbon: Show carbon atom labels.
         highlight_atoms: List of atom indices to highlight.
@@ -44,22 +38,11 @@ class RenderConfig(BaseModel):
     background_color: str = Field(
         default="white", description="Background color (name or hex)"
     )
-    atom_label_font_size: int = Field(
-        default=12, ge=6, le=48, description="Font size for atom labels"
-    )
-    bond_line_width: float = Field(
-        default=2.0, ge=0.5, le=10.0, description="Bond line width"
-    )
 
     # Quality settings
-    antialias: bool = Field(default=True, description="Enable antialiasing")
     dpi: int = Field(
         default=150, ge=72, le=600, description="DPI for high-quality output"
     )
-
-    # Output format specific
-    png_optimize: bool = Field(default=True, description="Optimize PNG files")
-    svg_sanitize: bool = Field(default=True, description="Sanitize SVG output")
 
     # Molecular display options
     show_hydrogen: bool = Field(
@@ -110,7 +93,6 @@ class RenderConfig(BaseModel):
             Dictionary of RDKit drawing options compatible with the molecule rendering.
         """
         return {
-            "bondLineWidth": self.bond_line_width,
             "addAtomIndices": False,
             "addBondIndices": False,
             "highlightAtoms": self.highlight_atoms or [],
@@ -127,18 +109,23 @@ class ParserConfig(BaseModel):
 
     Attributes:
         sanitize: Sanitize molecule after parsing to fix common issues.
-        remove_hs: Remove explicit hydrogens from the parsed molecule.
-        strict: Use strict parsing mode that fails on warnings.
+        show_hydrogen: Show explicit hydrogen atoms (determines if hydrogens are removed).
     """
 
     # Sanitization options
     sanitize: bool = Field(default=True, description="Sanitize molecule after parsing")
-    remove_hs: bool = Field(default=True, description="Remove explicit hydrogens")
-
-    # Validation options
-    strict: bool = Field(
-        default=False, description="Use strict parsing (fail on warnings)"
+    show_hydrogen: bool = Field(
+        default=False, description="Show explicit hydrogen atoms"
     )
+
+    @property
+    def remove_hs(self) -> bool:
+        """Remove explicit hydrogens (inverse of show_hydrogen).
+
+        Returns:
+            True if hydrogens should be removed, False otherwise.
+        """
+        return not self.show_hydrogen
 
 
 class OutputConfig(BaseModel):
@@ -151,19 +138,13 @@ class OutputConfig(BaseModel):
         format: Output format (png, svg, jpg, jpeg, pdf).
         quality: Output quality from 1-100.
         optimize: Optimize output file size.
+        svg_sanitize: Sanitize SVG output for security.
     """
 
     format: str = Field(default="png", description="Output format (png, svg, etc.)")
     quality: int = Field(default=95, ge=1, le=100, description="Output quality (1-100)")
     optimize: bool = Field(default=True, description="Optimize output file size")
-
-    # SVG-specific options
-    svg_use_vector: bool = Field(
-        default=True, description="Use true vector SVG rendering"
-    )
-    svg_line_width_mult: int = Field(
-        default=1, ge=1, le=5, description="SVG line width multiplier"
-    )
+    svg_sanitize: bool = Field(default=True, description="Sanitize SVG output for security")
 
     @field_validator("format")
     @classmethod
