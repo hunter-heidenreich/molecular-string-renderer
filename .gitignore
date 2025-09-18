@@ -209,3 +209,5 @@ __marimo__/
 .vscode/
 
 out/
+
+.DS_Store

@@ -15,6 +15,77 @@ from molecular_string_renderer.parsers import get_parser
 from molecular_string_renderer.renderers import get_renderer
 
 
+def _initialize_configurations(
+    render_config: RenderConfig | None,
+    parser_config: ParserConfig | None,
+    output_config: OutputConfig | None,
+    output_format: str,
+) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
+    """
+    Initialize and coordinate configuration objects with defaults.
+
+    Args:
+        render_config: Optional render configuration
+        parser_config: Optional parser configuration
+        output_config: Optional output configuration
+        output_format: Output format for default output config
+
+    Returns:
+        Tuple of (render_config, parser_config, output_config)
+    """
+    render_config = render_config or RenderConfig()
+    parser_config = parser_config or ParserConfig()
+    output_config = output_config or OutputConfig(format=output_format)
+
+    # Auto-coordinate hydrogen display settings
+    if render_config.show_hydrogen and parser_config.remove_hs:
+        parser_config = ParserConfig(
+            sanitize=parser_config.sanitize,
+            show_hydrogen=True,  # Keep hydrogens for display
+        )
+
+    return render_config, parser_config, output_config
+
+
+def _handle_output_saving(
+    image: Image.Image,
+    output_path: str | Path | None,
+    output_format: str,
+    output_config: OutputConfig,
+    mol=None,
+    auto_filename: bool = False,
+    molecular_string: str | None = None,
+) -> None:
+    """
+    Handle saving of rendered images with consistent logic.
+
+    Args:
+        image: PIL Image to save
+        output_path: Optional output path
+        output_format: Output format
+        output_config: Output configuration
+        mol: Optional molecule object for SVG rendering
+        auto_filename: Whether to generate automatic filename
+        molecular_string: Source string for auto filename generation
+    """
+    if output_path or auto_filename:
+        output_handler = get_output_handler(output_format, output_config)
+
+        # For SVG output, provide the molecule for true vector rendering
+        if output_format.lower() == "svg" and mol is not None:
+            output_handler.set_molecule(mol)
+
+        if not output_path and auto_filename and molecular_string:
+            # Generate safe filename
+            base_name = create_safe_filename(
+                molecular_string, output_handler.file_extension
+            )
+            output_path = Path.cwd() / base_name
+
+        if output_path:
+            output_handler.save(image, output_path)
+
+
 def render_molecule(
     molecular_string: str,
     format_type: str = "smiles",
@@ -45,19 +116,9 @@ def render_molecule(
         ValueError: If molecular string is invalid or format unsupported
     """
     # Initialize configurations with defaults
-    render_config = render_config or RenderConfig()
-    parser_config = parser_config or ParserConfig()
-    output_config = output_config or OutputConfig(format=output_format)
-    
-    # Auto-coordinate hydrogen display settings
-    # If show_hydrogen is True but parser is configured to remove hydrogens,
-    # we need to ensure hydrogens are kept in the molecule
-    if render_config.show_hydrogen and parser_config.remove_hs:
-        # Create a new parser config with show_hydrogen=True to keep hydrogens
-        parser_config = ParserConfig(
-            sanitize=parser_config.sanitize,
-            show_hydrogen=True,  # Keep hydrogens for display
-        )
+    render_config, parser_config, output_config = _initialize_configurations(
+        render_config, parser_config, output_config, output_format
+    )
 
     # Parse the molecular string
     parser = get_parser(format_type, parser_config)
@@ -68,22 +129,15 @@ def render_molecule(
     image = renderer.render(mol)
 
     # Save if output path is provided or auto_filename is enabled
-    if output_path or auto_filename:
-        output_handler = get_output_handler(output_format, output_config)
-
-        # For SVG output, provide the molecule for true vector rendering
-        if hasattr(output_handler, "set_molecule") and output_format.lower() == "svg":
-            output_handler.set_molecule(mol)
-
-        if not output_path and auto_filename:
-            # Generate safe filename
-            base_name = create_safe_filename(
-                molecular_string, output_handler.file_extension
-            )
-            output_path = Path.cwd() / base_name
-
-        if output_path:
-            output_handler.save(image, output_path)
+    _handle_output_saving(
+        image=image,
+        output_path=output_path,
+        output_format=output_format,
+        output_config=output_config,
+        mol=mol,
+        auto_filename=auto_filename,
+        molecular_string=molecular_string,
+    )
 
     return image
 
@@ -122,9 +176,9 @@ def render_molecules_grid(
         raise ValueError("Cannot render empty molecule list")
 
     # Initialize configurations
-    render_config = render_config or RenderConfig()
-    parser_config = parser_config or ParserConfig()
-    output_config = output_config or OutputConfig(format=output_format)
+    render_config, parser_config, output_config = _initialize_configurations(
+        render_config, parser_config, output_config, output_format
+    )
 
     # Parse all molecules
     parser = get_parser(format_type, parser_config)
@@ -169,9 +223,12 @@ def render_molecules_grid(
     image = grid_renderer.render_grid(mols, legends)
 
     # Save if output path provided
-    if output_path:
-        output_handler = get_output_handler(output_format, output_config)
-        output_handler.save(image, output_path)
+    _handle_output_saving(
+        image=image,
+        output_path=output_path,
+        output_format=output_format,
+        output_config=output_config,
+    )
 
     return image
 

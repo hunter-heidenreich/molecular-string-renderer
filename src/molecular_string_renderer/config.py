@@ -110,6 +110,8 @@ class ParserConfig(BaseModel):
     Attributes:
         sanitize: Sanitize molecule after parsing to fix common issues.
         show_hydrogen: Show explicit hydrogen atoms (determines if hydrogens are removed).
+        remove_hs: Remove explicit hydrogens (inverse of show_hydrogen).
+        strict: Use strict parsing mode.
     """
 
     # Sanitization options
@@ -117,6 +119,21 @@ class ParserConfig(BaseModel):
     show_hydrogen: bool = Field(
         default=False, description="Show explicit hydrogen atoms"
     )
+    strict: bool = Field(default=False, description="Use strict parsing mode")
+
+    def __init__(self, **data):
+        """Initialize ParserConfig with support for both show_hydrogen and remove_hs."""
+        # Handle the case where remove_hs is provided instead of show_hydrogen
+        if "remove_hs" in data and "show_hydrogen" not in data:
+            data["show_hydrogen"] = not data.pop("remove_hs")
+        elif "remove_hs" in data and "show_hydrogen" in data:
+            # If both are provided, remove_hs takes precedence to avoid conflicts
+            data["show_hydrogen"] = not data.pop("remove_hs")
+        elif "remove_hs" in data:
+            # Remove remove_hs if show_hydrogen is also present
+            data.pop("remove_hs")
+
+        super().__init__(**data)
 
     @property
     def remove_hs(self) -> bool:
@@ -144,7 +161,9 @@ class OutputConfig(BaseModel):
     format: str = Field(default="png", description="Output format (png, svg, etc.)")
     quality: int = Field(default=95, ge=1, le=100, description="Output quality (1-100)")
     optimize: bool = Field(default=True, description="Optimize output file size")
-    svg_sanitize: bool = Field(default=True, description="Sanitize SVG output for security")
+    svg_sanitize: bool = Field(
+        default=True, description="Sanitize SVG output for security"
+    )
 
     @field_validator("format")
     @classmethod

@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
-    {name = "Hunter Heidenreich", email = "hunter@hunterheidenreich.com"},
+    {name = "Hunter Heidenreich", email = "hheiden0@gmail.com"},
 ]
 keywords = ["chemistry", "molecules", "smiles", "visualization", "rdkit"]
 classifiers = [

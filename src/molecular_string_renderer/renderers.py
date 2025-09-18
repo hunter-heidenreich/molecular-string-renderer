@@ -57,51 +57,52 @@ class MolecularRenderer(ABC):
         # Add carbon labels if requested
         if self.config.show_carbon:
             for atom in mol.GetAtoms():
-                if atom.GetSymbol() == 'C':
-                    atom.SetProp('atomLabel', 'C')
+                if atom.GetSymbol() == "C":
+                    atom.SetProp("atomLabel", "C")
 
         return mol
 
     def _get_molecule_dimensions(self, mol: Mol) -> tuple[float, float]:
         """
         Calculate molecule dimensions from 2D coordinates.
-        
+
         Args:
             mol: RDKit Mol object with 2D coordinates
-            
+
         Returns:
             tuple: (width, height) in RDKit coordinate units
         """
         if mol.GetNumConformers() == 0:
             return 1.0, 1.0
-            
+
         # Get the conformer (2D coordinates)
         conf = mol.GetConformer()
-        
+
         # Get atom positions
         positions = []
         for i in range(mol.GetNumAtoms()):
             pos = conf.GetAtomPosition(i)
             positions.append((pos.x, pos.y))
-        
+
         if not positions:
             return 1.0, 1.0
-        
+
         # For single atom molecules, use a default size
         if len(positions) == 1:
             return 1.0, 1.0
-        
+
         # Calculate bounding box
         min_x = min(pos[0] for pos in positions)
         max_x = max(pos[0] for pos in positions)
         min_y = min(pos[1] for pos in positions)
         max_y = max(pos[1] for pos in positions)
-        
+
         width = max_x - min_x
         height = max_y - min_y
-        
+
         # Return dimensions with minimum values to avoid zero
         return max(width, 0.5), max(height, 0.5)
+
 
 class Molecule2DRenderer(MolecularRenderer):
     """Renderer for 2D molecular structures."""
@@ -122,36 +123,36 @@ class Molecule2DRenderer(MolecularRenderer):
             # Use the drawer approach for better parameter control
             drawer = rdMolDraw2D.MolDraw2DCairo(self.config.width, self.config.height)
             options = drawer.drawOptions()
-            
+
             # Use the drawer approach for better parameter control
             drawer = rdMolDraw2D.MolDraw2DCairo(self.config.width, self.config.height)
             options = drawer.drawOptions()
-            
+
             # Handle background color
             if self.config.background_color.lower().strip() != "white":
                 # Convert color to RGBA tuple (0-1 range)
                 color_rgba = self._parse_color_to_rgba(self.config.background_color)
                 options.setBackgroundColour(color_rgba)
-            
+
             # Handle carbon display
             options.explicitMethyl = self.config.show_carbon
-            
+
             # Draw the molecule
             if self.config.highlight_atoms or self.config.highlight_bonds:
                 drawer.DrawMolecule(
                     mol,
                     highlightAtoms=self.config.highlight_atoms or [],
-                    highlightBonds=self.config.highlight_bonds or []
+                    highlightBonds=self.config.highlight_bonds or [],
                 )
             else:
                 drawer.DrawMolecule(mol)
-                
+
             drawer.FinishDrawing()
-            
+
             # Convert to PIL Image
             png_bytes = drawer.GetDrawingText()
             img = Image.open(io.BytesIO(png_bytes))
-            
+
             # Ensure RGBA mode for consistency
             if img.mode != "RGBA":
                 img = img.convert("RGBA")
@@ -160,13 +161,13 @@ class Molecule2DRenderer(MolecularRenderer):
 
         except Exception as e:
             raise RuntimeError(f"Failed to render molecule: {e}")
-    
+
     def _parse_color_to_rgba(self, color_str: str) -> tuple[float, float, float, float]:
         """Parse color string to RGBA tuple (0-1 range) for RDKit.
-        
+
         Args:
             color_str: Color name or hex string
-            
+
         Returns:
             RGBA tuple with values in 0-1 range
         """
@@ -174,7 +175,7 @@ class Molecule2DRenderer(MolecularRenderer):
             # Try to create a PIL image with the color to parse it
             test_img = Image.new("RGB", (1, 1), color_str)
             r, g, b = test_img.getpixel((0, 0))
-            return (r/255.0, g/255.0, b/255.0, 1.0)
+            return (r / 255.0, g / 255.0, b / 255.0, 1.0)
         except Exception:
             # Fall back to white if color parsing fails
             return (1.0, 1.0, 1.0, 1.0)
