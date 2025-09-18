@@ -87,6 +87,25 @@ class JPEGOutput(RasterOutputHandler):
         """JPEG supports quality parameter."""
         return True
 
+    def _prepare_image(self, image: Image.Image) -> Image.Image:
+        """Prepare image for JPEG saving (convert to JPEG-compatible modes)."""
+        # JPEG supports: L (grayscale), RGB, and CMYK modes
+        # Convert other modes to RGB for maximum compatibility
+        if image.mode in ("RGB", "L", "CMYK"):
+            return image
+        elif image.mode in ("RGBA", "LA", "PA"):
+            # Images with alpha channel - convert to RGB (loses transparency)
+            return image.convert("RGB")
+        elif image.mode in ("P", "1"):
+            # Palette and monochrome images - convert to RGB
+            return image.convert("RGB")
+        else:
+            # Any other modes (e.g., LAB, HSV, etc.) - convert to RGB
+            logger.warning(
+                f"Converting unusual image mode '{image.mode}' to RGB for JPEG"
+            )
+            return image.convert("RGB")
+
 
 class WEBPOutput(RasterOutputHandler):
     """WEBP output handler."""
@@ -183,6 +202,20 @@ class BMPOutput(RasterOutputHandler):
     def supports_quality(self) -> bool:
         """BMP does not support quality parameter."""
         return False
+
+    def _prepare_image(self, image: Image.Image) -> Image.Image:
+        """Prepare image for BMP saving (handle unsupported modes)."""
+        # BMP supports: 1, L, P, RGB modes
+        # BMP can handle RGBA but alpha channel is ignored/flattened
+        if image.mode in ("1", "L", "P", "RGB", "RGBA"):
+            return image
+        elif image.mode == "LA":
+            # LA mode not supported by BMP, convert to RGB
+            return image.convert("RGB")
+        else:
+            # Convert any other modes to RGB for maximum compatibility
+            logger.warning(f"Converting image mode '{image.mode}' to RGB for BMP")
+            return image.convert("RGB")
 
     def _get_save_kwargs(self) -> dict[str, Any]:
         """Get BMP-specific save kwargs (no optimization support)."""
