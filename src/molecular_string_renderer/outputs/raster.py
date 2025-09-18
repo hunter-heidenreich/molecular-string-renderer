@@ -7,6 +7,8 @@ Provides implementations for common raster image formats.
 import logging
 from typing import Any
 
+from PIL import Image
+
 from molecular_string_renderer.outputs.base import RasterOutputHandler
 
 logger = logging.getLogger(__name__)
@@ -40,18 +42,20 @@ class PNGOutput(RasterOutputHandler):
         """PNG supports quality parameter."""
         return True
 
-    def _has_transparency(self, image) -> bool:
+    def _has_transparency(self, image: Image.Image) -> bool:
         """Check if image has transparent pixels."""
-        if image.mode != "RGBA":
+        if image.mode not in ("RGBA", "LA"):
             return False
         # Quick check by examining alpha channel
         alpha = image.split()[-1]
         return alpha.getextrema()[0] < 255
 
-    def _prepare_image(self, image):
-        """Prepare PNG image (convert to RGB if no transparency for smaller files)."""
+    def _prepare_image(self, image: Image.Image) -> Image.Image:
+        """Prepare PNG image (convert to optimal mode if no transparency)."""
         if image.mode == "RGBA" and not self._has_transparency(image):
             return image.convert("RGB")
+        elif image.mode == "LA" and not self._has_transparency(image):
+            return image.convert("L")
         return image
 
 
