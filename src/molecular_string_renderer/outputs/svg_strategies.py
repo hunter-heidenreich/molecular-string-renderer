@@ -9,6 +9,7 @@ import logging
 from abc import ABC, abstractmethod
 
 from PIL import Image
+from rdkit.Chem import Draw
 
 from molecular_string_renderer.outputs.raster import PNGOutput
 
@@ -19,12 +20,12 @@ class SVGGenerationStrategy(ABC):
     """Abstract base class for SVG generation strategies."""
 
     @abstractmethod
-    def generate_svg(self, image: Image.Image, config) -> str:
+    def generate_svg(self, image: Image.Image, config: object) -> str:
         """Generate SVG content from an image.
 
         Args:
             image: PIL Image to convert to SVG
-            config: Output configuration
+            config: Output configuration object
 
         Returns:
             SVG content as string
@@ -39,7 +40,7 @@ class VectorSVGStrategy(SVGGenerationStrategy):
         """Initialize vector SVG strategy."""
         self._molecule = None
 
-    def set_molecule(self, mol) -> None:
+    def set_molecule(self, mol: object) -> None:
         """Set the molecule for vector SVG generation.
 
         Args:
@@ -47,25 +48,23 @@ class VectorSVGStrategy(SVGGenerationStrategy):
         """
         self._molecule = mol
 
-    def generate_svg(self, image: Image.Image, config) -> str:
+    def generate_svg(self, image: Image.Image, config: object) -> str:
         """Generate true vector SVG from molecule.
 
         Args:
             image: PIL Image (used for size reference)
-            config: Output configuration
+            config: Output configuration object
 
         Returns:
             SVG content as string
 
         Raises:
-            ValueError: If no molecule is set or RDKit is unavailable
+            ValueError: If no molecule is set
         """
         if self._molecule is None:
             raise ValueError("No molecule set for vector SVG generation")
 
         try:
-            from rdkit.Chem import Draw
-
             # Use RDKit's native SVG generation
             svg_content = Draw.MolToSVG(
                 self._molecule,
@@ -83,9 +82,6 @@ class VectorSVGStrategy(SVGGenerationStrategy):
             logger.debug("Generated true vector SVG using RDKit")
             return svg_content
 
-        except ImportError as e:
-            logger.warning(f"RDKit not available for vector SVG: {e}")
-            raise ValueError("RDKit not available for vector SVG generation")
         except Exception as e:
             logger.warning(f"Failed to generate vector SVG: {e}")
             raise ValueError(f"Failed to generate vector SVG: {e}")
@@ -99,8 +95,6 @@ class VectorSVGStrategy(SVGGenerationStrategy):
         Returns:
             Optimized SVG content
         """
-        # Basic SVG optimizations
-        # Remove unnecessary whitespace and comments
         lines = svg_content.split("\n")
         optimized_lines = []
 
@@ -115,12 +109,12 @@ class VectorSVGStrategy(SVGGenerationStrategy):
 class RasterSVGStrategy(SVGGenerationStrategy):
     """Strategy for generating SVG by embedding raster images."""
 
-    def generate_svg(self, image: Image.Image, config) -> str:
+    def generate_svg(self, image: Image.Image, config: object) -> str:
         """Generate SVG by embedding raster image.
 
         Args:
             image: PIL Image to embed
-            config: Output configuration
+            config: Output configuration object
 
         Returns:
             SVG content with embedded raster image
@@ -151,7 +145,7 @@ class HybridSVGStrategy(SVGGenerationStrategy):
         self._vector_strategy = VectorSVGStrategy()
         self._raster_strategy = RasterSVGStrategy()
 
-    def set_molecule(self, mol) -> None:
+    def set_molecule(self, mol: object) -> None:
         """Set the molecule for vector SVG generation.
 
         Args:
@@ -159,12 +153,12 @@ class HybridSVGStrategy(SVGGenerationStrategy):
         """
         self._vector_strategy.set_molecule(mol)
 
-    def generate_svg(self, image: Image.Image, config) -> str:
+    def generate_svg(self, image: Image.Image, config: object) -> str:
         """Generate SVG using vector strategy first, fallback to raster.
 
         Args:
             image: PIL Image to convert to SVG
-            config: Output configuration
+            config: Output configuration object
 
         Returns:
             SVG content as string
