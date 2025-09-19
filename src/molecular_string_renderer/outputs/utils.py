@@ -11,7 +11,12 @@ from typing import Any
 
 from PIL import Image
 
+from molecular_string_renderer.config import OutputConfig
+
 logger = logging.getLogger(__name__)
+
+# Constants for image processing
+_ALPHA_FULLY_OPAQUE = 255
 
 
 @dataclass(frozen=True)
@@ -39,7 +44,8 @@ class FormatInfo:
 class FormatRegistry:
     """Registry for output format information."""
 
-    _formats: dict[str, FormatInfo] = {
+    # Base format definitions - avoid duplication by defining shared formats once
+    _base_formats = {
         "png": FormatInfo(
             extension=".png",
             pil_format="PNG",
@@ -47,14 +53,6 @@ class FormatRegistry:
             supports_alpha=True,
             supports_quality=True,
             mime_type="image/png",
-        ),
-        "jpg": FormatInfo(
-            extension=".jpg",
-            pil_format="JPEG",
-            valid_extensions=[".jpg", ".jpeg"],
-            supports_alpha=False,
-            supports_quality=True,
-            mime_type="image/jpeg",
         ),
         "jpeg": FormatInfo(
             extension=".jpg",
@@ -73,14 +71,6 @@ class FormatRegistry:
             mime_type="image/webp",
         ),
         "tiff": FormatInfo(
-            extension=".tiff",
-            pil_format="TIFF",
-            valid_extensions=[".tiff", ".tif"],
-            supports_alpha=True,
-            supports_quality=False,
-            mime_type="image/tiff",
-        ),
-        "tif": FormatInfo(
             extension=".tiff",
             pil_format="TIFF",
             valid_extensions=[".tiff", ".tif"],
@@ -114,6 +104,14 @@ class FormatRegistry:
         ),
     }
 
+    # Build complete format mapping with aliases
+    _formats: dict[str, FormatInfo] = {
+        **_base_formats,
+        # Aliases for common alternate names
+        "jpg": _base_formats["jpeg"],
+        "tif": _base_formats["tiff"],
+    }
+
     @classmethod
     def get_format_info(cls, format_name: str) -> FormatInfo:
         """Get format information by name."""
@@ -138,7 +136,8 @@ class ImageModeUtils:
 
     @staticmethod
     def has_transparency(image: Image.Image) -> bool:
-        """Check if image has transparent pixels.
+        """
+        Check if image has transparent pixels.
 
         Args:
             image: PIL Image to check
@@ -151,7 +150,7 @@ class ImageModeUtils:
 
         # Quick check by examining alpha channel
         alpha = image.split()[-1]
-        return alpha.getextrema()[0] < 255
+        return alpha.getextrema()[0] < _ALPHA_FULLY_OPAQUE
 
     @staticmethod
     def prepare_for_no_alpha(image: Image.Image) -> Image.Image:
@@ -173,7 +172,8 @@ class ImageModeUtils:
 
     @staticmethod
     def optimize_for_format(image: Image.Image, supports_alpha: bool) -> Image.Image:
-        """Optimize image mode for specific format capabilities.
+        """
+        Optimize image mode for specific format capabilities.
 
         Args:
             image: PIL Image to optimize
@@ -185,11 +185,11 @@ class ImageModeUtils:
         if not supports_alpha:
             return ImageModeUtils.prepare_for_no_alpha(image)
 
-        # For formats that support alpha, optimize transparent images
-        if image.mode == "RGBA" and not ImageModeUtils.has_transparency(image):
-            return image.convert("RGB")
-        elif image.mode == "LA" and not ImageModeUtils.has_transparency(image):
-            return image.convert("L")
+        # For formats that support alpha, optimize images without transparency
+        image_mode = image.mode
+        if image_mode in ("RGBA", "LA") and not ImageModeUtils.has_transparency(image):
+            # Convert to non-alpha mode if no transparency is actually used
+            return image.convert("RGB" if image_mode == "RGBA" else "L")
 
         return image
 
@@ -263,8 +263,9 @@ def create_safe_filename(molecular_string: str, extension: str = ".png") -> str:
     return f"{base_name}{extension}"
 
 
-def build_save_kwargs(format_info: FormatInfo, config) -> dict[str, Any]:
-    """Build save kwargs for PIL Image.save() based on format and config.
+def build_save_kwargs(format_info: FormatInfo, config: OutputConfig) -> dict[str, Any]:
+    """
+    Build save kwargs for PIL Image.save() based on format and config.
 
     Args:
         format_info: Format information
