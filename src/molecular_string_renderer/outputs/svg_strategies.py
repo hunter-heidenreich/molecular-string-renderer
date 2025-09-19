@@ -9,18 +9,23 @@ import logging
 from abc import ABC, abstractmethod
 
 from PIL import Image
+from rdkit import Chem
 from rdkit.Chem import Draw
 
+from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs.raster import PNGOutput
 
 logger = logging.getLogger(__name__)
+
+# Type alias for RDKit Mol objects
+Mol = Chem.Mol
 
 
 class SVGGenerationStrategy(ABC):
     """Abstract base class for SVG generation strategies."""
 
     @abstractmethod
-    def generate_svg(self, image: Image.Image, config: object) -> str:
+    def generate_svg(self, image: Image.Image, config: OutputConfig) -> str:
         """Generate SVG content from an image.
 
         Args:
@@ -40,7 +45,7 @@ class VectorSVGStrategy(SVGGenerationStrategy):
         """Initialize vector SVG strategy."""
         self._molecule = None
 
-    def set_molecule(self, mol: object) -> None:
+    def set_molecule(self, mol: Mol) -> None:
         """Set the molecule for vector SVG generation.
 
         Args:
@@ -48,7 +53,7 @@ class VectorSVGStrategy(SVGGenerationStrategy):
         """
         self._molecule = mol
 
-    def generate_svg(self, image: Image.Image, config: object) -> str:
+    def generate_svg(self, image: Image.Image, config: OutputConfig) -> str:
         """Generate true vector SVG from molecule.
 
         Args:
@@ -109,7 +114,7 @@ class VectorSVGStrategy(SVGGenerationStrategy):
 class RasterSVGStrategy(SVGGenerationStrategy):
     """Strategy for generating SVG by embedding raster images."""
 
-    def generate_svg(self, image: Image.Image, config: object) -> str:
+    def generate_svg(self, image: Image.Image, config: OutputConfig) -> str:
         """Generate SVG by embedding raster image.
 
         Args:
@@ -119,7 +124,6 @@ class RasterSVGStrategy(SVGGenerationStrategy):
         Returns:
             SVG content with embedded raster image
         """
-        # Convert to PNG bytes for embedding
         png_output = PNGOutput(config)
         png_bytes = png_output.get_bytes(image)
         base64_data = base64.b64encode(png_bytes).decode()
@@ -145,7 +149,7 @@ class HybridSVGStrategy(SVGGenerationStrategy):
         self._vector_strategy = VectorSVGStrategy()
         self._raster_strategy = RasterSVGStrategy()
 
-    def set_molecule(self, mol: object) -> None:
+    def set_molecule(self, mol: Mol) -> None:
         """Set the molecule for vector SVG generation.
 
         Args:
@@ -153,7 +157,7 @@ class HybridSVGStrategy(SVGGenerationStrategy):
         """
         self._vector_strategy.set_molecule(mol)
 
-    def generate_svg(self, image: Image.Image, config: object) -> str:
+    def generate_svg(self, image: Image.Image, config: OutputConfig) -> str:
         """Generate SVG using vector strategy first, fallback to raster.
 
         Args:

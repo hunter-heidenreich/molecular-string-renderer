@@ -13,17 +13,22 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
+from rdkit import Chem
 
+from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs.base import VectorOutputHandler
 from molecular_string_renderer.outputs.svg_strategies import HybridSVGStrategy
 
 logger = logging.getLogger(__name__)
 
+# Type alias for RDKit Mol objects
+Mol = Chem.Mol
+
 
 class SVGOutput(VectorOutputHandler):
     """SVG output handler with configurable generation strategy."""
 
-    def __init__(self, config: object = None):
+    def __init__(self, config: OutputConfig | None = None):
         """Initialize SVG output handler.
         
         Args:
@@ -32,7 +37,7 @@ class SVGOutput(VectorOutputHandler):
         super().__init__("svg", config)
         self._strategy = HybridSVGStrategy()
 
-    def set_molecule(self, mol: object) -> None:
+    def set_molecule(self, mol: Mol) -> None:
         """Set the molecule for vector SVG generation.
 
         Args:
@@ -63,7 +68,7 @@ class SVGOutput(VectorOutputHandler):
 class PDFOutput(VectorOutputHandler):
     """PDF output handler using ReportLab."""
 
-    def __init__(self, config: object = None):
+    def __init__(self, config: OutputConfig | None = None):
         """Initialize PDF output handler.
         
         Args:
@@ -108,15 +113,12 @@ class PDFOutput(VectorOutputHandler):
             # Get page dimensions
             page_width, page_height = letter
 
-            # Calculate image dimensions to fit on page with some margin
             margin = 0.5 * inch
             max_width = page_width - 2 * margin
             max_height = page_height - 2 * margin
 
-            # Convert PIL image to RGB if it isn't already
             rgb_image = image.convert("RGB")
 
-            # Calculate scale factor to fit image on page
             img_width, img_height = rgb_image.size
             scale_x = max_width / img_width
             scale_y = max_height / img_height
@@ -126,11 +128,9 @@ class PDFOutput(VectorOutputHandler):
             actual_width = img_width * scale
             actual_height = img_height * scale
 
-            # Calculate position to center the image
             x = (page_width - actual_width) / 2
             y = (page_height - actual_height) / 2
 
-            # Save image to temporary buffer for embedding
             with BytesIO() as img_buffer:
                 rgb_image.save(img_buffer, format="PNG")
                 img_buffer.seek(0)

@@ -5,7 +5,6 @@ Provides a centralized way to create appropriate output handlers for different f
 """
 
 import logging
-from typing import Type
 
 from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs.base import OutputHandler
@@ -21,7 +20,7 @@ from molecular_string_renderer.outputs.vector import PDFOutput, SVGOutput
 logger = logging.getLogger(__name__)
 
 # Handler mapping - centralized for easy maintenance
-_OUTPUT_HANDLERS: dict[str, Type[OutputHandler]] = {
+_OUTPUT_HANDLERS: dict[str, type[OutputHandler]] = {
     "png": PNGOutput,
     "svg": SVGOutput,
     "jpg": JPEGOutput,

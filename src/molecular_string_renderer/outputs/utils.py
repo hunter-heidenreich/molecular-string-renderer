@@ -185,10 +185,8 @@ class ImageModeUtils:
         if not supports_alpha:
             return ImageModeUtils.prepare_for_no_alpha(image)
 
-        # For formats that support alpha, optimize images without transparency
         image_mode = image.mode
         if image_mode in ("RGBA", "LA") and not ImageModeUtils.has_transparency(image):
-            # Convert to non-alpha mode if no transparency is actually used
             return image.convert("RGB" if image_mode == "RGBA" else "L")
 
         return image
@@ -207,13 +205,10 @@ class ImageModeUtils:
         if image.mode in ("RGB", "L", "CMYK"):
             return image
         elif image.mode in ("RGBA", "LA", "PA"):
-            # Images with alpha channel - convert to RGB (loses transparency)
             return image.convert("RGB")
         elif image.mode in ("P", "1"):
-            # Palette and monochrome images - convert to RGB
             return image.convert("RGB")
         else:
-            # Any other modes (e.g., LAB, HSV, etc.) - convert to RGB
             logger.warning(
                 f"Converting unusual image mode '{image.mode}' to RGB for JPEG"
             )
@@ -234,10 +229,8 @@ class ImageModeUtils:
         if image.mode in ("1", "L", "P", "RGB", "RGBA"):
             return image
         elif image.mode == "LA":
-            # LA mode not supported by BMP, convert to RGB
             return image.convert("RGB")
         else:
-            # Convert any other modes to RGB for maximum compatibility
             logger.warning(f"Converting image mode '{image.mode}' to RGB for BMP")
             return image.convert("RGB")
 
@@ -284,7 +277,6 @@ def build_save_kwargs(format_info: FormatInfo, config: OutputConfig) -> dict[str
             }
         )
     elif config.optimize:
-        # Some formats support optimize but not quality
         kwargs["optimize"] = True
 
     return kwargs
