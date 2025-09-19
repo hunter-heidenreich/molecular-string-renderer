@@ -107,56 +107,56 @@ class TestPNGOutputTransparencyDetection:
 
     def test_has_transparency_rgb_image(self, rgb_image):
         """Test transparency detection on RGB image."""
-        output = PNGOutput()
-        assert output._has_transparency(rgb_image) is False
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
+        assert ImageModeUtils.has_transparency(rgb_image) is False
 
     def test_has_transparency_rgba_opaque(self, rgba_opaque_image):
         """Test transparency detection on opaque RGBA image."""
-        output = PNGOutput()
-        assert output._has_transparency(rgba_opaque_image) is False
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
+        assert ImageModeUtils.has_transparency(rgba_opaque_image) is False
 
     def test_has_transparency_rgba_transparent(self, rgba_transparent_image):
         """Test transparency detection on transparent RGBA image."""
-        output = PNGOutput()
-        assert output._has_transparency(rgba_transparent_image) is True
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
+        assert ImageModeUtils.has_transparency(rgba_transparent_image) is True
 
     def test_has_transparency_rgba_mixed(self, rgba_mixed_transparency_image):
         """Test transparency detection on mixed transparency RGBA image."""
-        output = PNGOutput()
-        assert output._has_transparency(rgba_mixed_transparency_image) is True
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
+        assert ImageModeUtils.has_transparency(rgba_mixed_transparency_image) is True
 
     def test_has_transparency_edge_case_mode_l(self):
         """Test transparency detection on L mode image."""
         img = Image.new("L", (100, 100), 128)
-        output = PNGOutput()
-        assert output._has_transparency(img) is False
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
+        assert ImageModeUtils.has_transparency(img) is False
 
     def test_has_transparency_edge_case_mode_la(self):
         """Test transparency detection on LA mode image."""
         img = Image.new("LA", (100, 100), (128, 255))
-        output = PNGOutput()
-        assert output._has_transparency(img) is False
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
+        assert ImageModeUtils.has_transparency(img) is False
 
     def test_has_transparency_edge_case_mode_la_transparent(self):
         """Test transparency detection on LA mode image with transparency."""
         img = Image.new("LA", (100, 100), (128, 200))
-        output = PNGOutput()
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
         # LA mode should now be properly handled - 200 < 255 means transparency
-        assert output._has_transparency(img) is True
+        assert ImageModeUtils.has_transparency(img) is True
 
     def test_has_transparency_la_fully_opaque(self):
         """Test transparency detection on fully opaque LA mode image."""
         img = Image.new("LA", (100, 100), (128, 255))
-        output = PNGOutput()
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
         # Alpha = 255 means fully opaque, so no transparency
-        assert output._has_transparency(img) is False
+        assert ImageModeUtils.has_transparency(img) is False
 
     def test_has_transparency_la_fully_transparent(self):
         """Test transparency detection on fully transparent LA mode image."""
         img = Image.new("LA", (100, 100), (128, 0))
-        output = PNGOutput()
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
         # Alpha = 0 means fully transparent
-        assert output._has_transparency(img) is True
+        assert ImageModeUtils.has_transparency(img) is True
 
 
 class TestPNGOutputImagePreparation:
@@ -627,6 +627,7 @@ class TestPNGOutputEdgeCases:
 
     def test_partially_transparent_pixel_pattern(self):
         """Test complex transparency patterns."""
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
         output = PNGOutput()
         image = Image.new("RGBA", (100, 100), (255, 255, 255, 255))
 
@@ -639,12 +640,13 @@ class TestPNGOutputEdgeCases:
                 else:
                     pixels[i, j] = (0, 255, 0, 255)  # Opaque
 
-        assert output._has_transparency(image) is True
+        assert ImageModeUtils.has_transparency(image) is True
         result = output._prepare_image(image)
         assert result.mode == "RGBA"
 
     def test_partially_transparent_la_pixel_pattern(self):
         """Test complex LA transparency patterns."""
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
         output = PNGOutput()
         image = Image.new("LA", (100, 100), (128, 255))
 
@@ -654,7 +656,7 @@ class TestPNGOutputEdgeCases:
             for j in range(10):
                 pixels[i, j] = (128, 100)  # Semi-transparent pixels
 
-        assert output._has_transparency(image) is True
+        assert ImageModeUtils.has_transparency(image) is True
         result = output._prepare_image(image)
         assert result.mode == "LA"
 
@@ -776,6 +778,7 @@ class TestPNGOutputTypeHints:
 
     def test_return_types(self):
         """Test that methods return correct types."""
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
         output = PNGOutput()
         image = Image.new("RGB", (10, 10), "white")
 
@@ -787,18 +790,19 @@ class TestPNGOutputTypeHints:
         assert isinstance(output.supports_quality, bool)
 
         # Test method return types
-        assert isinstance(output._has_transparency(image), bool)
+        assert isinstance(ImageModeUtils.has_transparency(image), bool)
         assert isinstance(output._prepare_image(image), Image.Image)
         assert isinstance(output.get_bytes(image), bytes)
         assert isinstance(output._get_save_kwargs(), dict)
 
     def test_method_accepts_correct_types(self):
         """Test that methods accept correct input types."""
+        from molecular_string_renderer.outputs.utils import ImageModeUtils
         output = PNGOutput()
         image = Image.new("RGB", (10, 10), "white")
 
         # These should not raise type errors
-        output._has_transparency(image)
+        ImageModeUtils.has_transparency(image)
         output._prepare_image(image)
         output.get_bytes(image)
 

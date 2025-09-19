@@ -146,7 +146,7 @@ class TestBMPOutputImagePreparation:
         img = Image.new("CMYK", (100, 100), (0, 100, 100, 0))
         output = BMPOutput()
 
-        with patch("molecular_string_renderer.outputs.raster.logger") as mock_logger:
+        with patch("molecular_string_renderer.outputs.utils.logger") as mock_logger:
             result = output._prepare_image(img)
 
             assert result.mode == "RGB"
@@ -649,7 +649,7 @@ class TestBMPOutputEdgeCases:
         output = BMPOutput()
         cmyk_image = Image.new("CMYK", (100, 100), (0, 100, 100, 0))
 
-        with patch("molecular_string_renderer.outputs.raster.logger") as mock_logger:
+        with patch("molecular_string_renderer.outputs.utils.logger") as mock_logger:
             result = output.get_bytes(cmyk_image)
 
             assert len(result) > 0

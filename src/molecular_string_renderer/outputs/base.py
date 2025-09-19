@@ -13,6 +13,11 @@ from typing import Any
 from PIL import Image
 
 from molecular_string_renderer.config import OutputConfig
+from molecular_string_renderer.outputs.utils import (
+    FormatRegistry,
+    ImageModeUtils,
+    build_save_kwargs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -83,64 +88,59 @@ class OutputHandler(ABC):
         logger.info(f"Successfully saved {self.format_name} to '{path}'")
 
 
-class RasterOutputHandler(OutputHandler):
-    """Base class for raster image output handlers."""
+class RegistryBasedOutputHandler(OutputHandler):
+    """Base class for output handlers that use the format registry."""
 
-    def __init__(self, config: OutputConfig | None = None):
-        """Initialize raster output handler."""
+    def __init__(self, format_key: str, config: OutputConfig | None = None):
+        """Initialize with format key for registry lookup."""
         super().__init__(config)
+        self._format_info = FormatRegistry.get_format_info(format_key)
 
     @property
-    @abstractmethod
-    def pil_format(self) -> str:
-        """Get the PIL format string for saving."""
-        pass
-
-    @property
-    @abstractmethod
-    def valid_extensions(self) -> list[str]:
-        """Get list of valid file extensions for this format."""
-        pass
-
-    @property
-    @abstractmethod
-    def supports_alpha(self) -> bool:
-        """Whether this format supports alpha channel."""
-        pass
-
-    @property
-    @abstractmethod
-    def supports_quality(self) -> bool:
-        """Whether this format supports quality parameter."""
-        pass
+    def file_extension(self) -> str:
+        """Get file extension from registry."""
+        return self._format_info.extension
 
     @property
     def format_name(self) -> str:
-        """Get the format name (defaults to PIL format)."""
-        return self.pil_format
+        """Get format name from registry."""
+        return self._format_info.pil_format
+
+    @property
+    def valid_extensions(self) -> list[str]:
+        """Get valid extensions from registry."""
+        return self._format_info.valid_extensions
+
+    @property
+    def supports_alpha(self) -> bool:
+        """Get alpha support from registry."""
+        return self._format_info.supports_alpha
+
+    @property
+    def supports_quality(self) -> bool:
+        """Get quality support from registry."""
+        return self._format_info.supports_quality
+
+
+class RasterOutputHandler(RegistryBasedOutputHandler):
+    """Base class for raster image output handlers."""
+
+    def __init__(self, format_key: str, config: OutputConfig | None = None):
+        """Initialize raster output handler."""
+        super().__init__(format_key, config)
+
+    @property
+    def pil_format(self) -> str:
+        """Get the PIL format string for saving."""
+        return self._format_info.pil_format
 
     def _prepare_image(self, image: Image.Image) -> Image.Image:
-        """Prepare image for saving (handle alpha channel if needed)."""
-        if not self.supports_alpha and image.mode in ("RGBA", "LA"):
-            return image.convert("RGB")
-        return image
+        """Prepare image for saving (optimize based on format capabilities)."""
+        return ImageModeUtils.optimize_for_format(image, self.supports_alpha)
 
     def _get_save_kwargs(self) -> dict[str, Any]:
         """Get keyword arguments for PIL save method."""
-        kwargs = {"format": self.pil_format}
-
-        if self.supports_quality:
-            kwargs.update(
-                {
-                    "optimize": self.config.optimize,
-                    "quality": self.config.quality,
-                }
-            )
-        elif self.config.optimize:
-            # Some formats support optimize but not quality
-            kwargs["optimize"] = True
-
-        return kwargs
+        return build_save_kwargs(self._format_info, self.config)
 
     def save(self, image: Image.Image, output_path: str | Path) -> None:
         """Save image as raster file."""
@@ -164,14 +164,14 @@ class RasterOutputHandler(OutputHandler):
         return buffer.getvalue()
 
 
-class VectorOutputHandler(OutputHandler):
+class VectorOutputHandler(RegistryBasedOutputHandler):
     """Base class for vector/document output handlers."""
 
-    def __init__(self, config: OutputConfig | None = None):
+    def __init__(self, format_key: str, config: OutputConfig | None = None):
         """Initialize vector output handler."""
-        super().__init__(config)
+        super().__init__(format_key, config)
 
     @property
     def format_name(self) -> str:
-        """Get the format name (defaults to file extension without dot)."""
+        """Get format name (lowercase for vector formats for compatibility)."""
         return self.file_extension.lstrip(".")

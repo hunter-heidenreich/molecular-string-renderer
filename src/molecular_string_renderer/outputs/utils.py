@@ -5,6 +5,241 @@ Provides common utilities for filename generation and format handling.
 """
 
 import hashlib
+import logging
+from dataclasses import dataclass
+from typing import Any
+
+from PIL import Image
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class FormatInfo:
+    """Information about an output format."""
+
+    extension: str
+    pil_format: str
+    valid_extensions: list[str]
+    supports_alpha: bool
+    supports_quality: bool
+    mime_type: str = ""
+
+    def __post_init__(self) -> None:
+        """Validate format info after initialization."""
+        if not self.extension.startswith("."):
+            object.__setattr__(self, "extension", f".{self.extension}")
+
+        # Ensure primary extension is in valid_extensions
+        if self.extension not in self.valid_extensions:
+            valid_exts = [self.extension] + self.valid_extensions
+            object.__setattr__(self, "valid_extensions", valid_exts)
+
+
+class FormatRegistry:
+    """Registry for output format information."""
+
+    _formats: dict[str, FormatInfo] = {
+        "png": FormatInfo(
+            extension=".png",
+            pil_format="PNG",
+            valid_extensions=[".png"],
+            supports_alpha=True,
+            supports_quality=True,
+            mime_type="image/png",
+        ),
+        "jpg": FormatInfo(
+            extension=".jpg",
+            pil_format="JPEG",
+            valid_extensions=[".jpg", ".jpeg"],
+            supports_alpha=False,
+            supports_quality=True,
+            mime_type="image/jpeg",
+        ),
+        "jpeg": FormatInfo(
+            extension=".jpg",
+            pil_format="JPEG",
+            valid_extensions=[".jpg", ".jpeg"],
+            supports_alpha=False,
+            supports_quality=True,
+            mime_type="image/jpeg",
+        ),
+        "webp": FormatInfo(
+            extension=".webp",
+            pil_format="WEBP",
+            valid_extensions=[".webp"],
+            supports_alpha=True,
+            supports_quality=True,
+            mime_type="image/webp",
+        ),
+        "tiff": FormatInfo(
+            extension=".tiff",
+            pil_format="TIFF",
+            valid_extensions=[".tiff", ".tif"],
+            supports_alpha=True,
+            supports_quality=False,
+            mime_type="image/tiff",
+        ),
+        "tif": FormatInfo(
+            extension=".tiff",
+            pil_format="TIFF",
+            valid_extensions=[".tiff", ".tif"],
+            supports_alpha=True,
+            supports_quality=False,
+            mime_type="image/tiff",
+        ),
+        "bmp": FormatInfo(
+            extension=".bmp",
+            pil_format="BMP",
+            valid_extensions=[".bmp"],
+            supports_alpha=False,
+            supports_quality=False,
+            mime_type="image/bmp",
+        ),
+        "svg": FormatInfo(
+            extension=".svg",
+            pil_format="SVG",
+            valid_extensions=[".svg"],
+            supports_alpha=True,
+            supports_quality=False,
+            mime_type="image/svg+xml",
+        ),
+        "pdf": FormatInfo(
+            extension=".pdf",
+            pil_format="PDF",
+            valid_extensions=[".pdf"],
+            supports_alpha=False,
+            supports_quality=False,
+            mime_type="application/pdf",
+        ),
+    }
+
+    @classmethod
+    def get_format_info(cls, format_name: str) -> FormatInfo:
+        """Get format information by name."""
+        format_key = format_name.lower().strip()
+        if format_key not in cls._formats:
+            raise ValueError(f"Unknown format: {format_name}")
+        return cls._formats[format_key]
+
+    @classmethod
+    def get_supported_formats(cls) -> list[str]:
+        """Get list of supported format names."""
+        return list(cls._formats.keys())
+
+    @classmethod
+    def is_supported(cls, format_name: str) -> bool:
+        """Check if format is supported."""
+        return format_name.lower().strip() in cls._formats
+
+
+class ImageModeUtils:
+    """Utilities for handling PIL image mode conversions."""
+
+    @staticmethod
+    def has_transparency(image: Image.Image) -> bool:
+        """Check if image has transparent pixels.
+
+        Args:
+            image: PIL Image to check
+
+        Returns:
+            True if image has any transparent pixels
+        """
+        if image.mode not in ("RGBA", "LA"):
+            return False
+
+        # Quick check by examining alpha channel
+        alpha = image.split()[-1]
+        return alpha.getextrema()[0] < 255
+
+    @staticmethod
+    def prepare_for_no_alpha(image: Image.Image) -> Image.Image:
+        """Prepare image for formats that don't support alpha.
+
+        Args:
+            image: PIL Image to prepare
+
+        Returns:
+            Image with alpha channel removed if present
+        """
+        if image.mode == "RGBA":
+            return image.convert("RGB")
+        elif image.mode == "LA":
+            return image.convert("L")
+        elif image.mode == "PA":
+            return image.convert("P")
+        return image
+
+    @staticmethod
+    def optimize_for_format(image: Image.Image, supports_alpha: bool) -> Image.Image:
+        """Optimize image mode for specific format capabilities.
+
+        Args:
+            image: PIL Image to optimize
+            supports_alpha: Whether target format supports alpha channel
+
+        Returns:
+            Optimized image
+        """
+        if not supports_alpha:
+            return ImageModeUtils.prepare_for_no_alpha(image)
+
+        # For formats that support alpha, optimize transparent images
+        if image.mode == "RGBA" and not ImageModeUtils.has_transparency(image):
+            return image.convert("RGB")
+        elif image.mode == "LA" and not ImageModeUtils.has_transparency(image):
+            return image.convert("L")
+
+        return image
+
+    @staticmethod
+    def ensure_jpeg_compatible(image: Image.Image) -> Image.Image:
+        """Ensure image is compatible with JPEG format.
+
+        Args:
+            image: PIL Image to make JPEG-compatible
+
+        Returns:
+            JPEG-compatible image
+        """
+        # JPEG supports: L (grayscale), RGB, and CMYK modes
+        if image.mode in ("RGB", "L", "CMYK"):
+            return image
+        elif image.mode in ("RGBA", "LA", "PA"):
+            # Images with alpha channel - convert to RGB (loses transparency)
+            return image.convert("RGB")
+        elif image.mode in ("P", "1"):
+            # Palette and monochrome images - convert to RGB
+            return image.convert("RGB")
+        else:
+            # Any other modes (e.g., LAB, HSV, etc.) - convert to RGB
+            logger.warning(
+                f"Converting unusual image mode '{image.mode}' to RGB for JPEG"
+            )
+            return image.convert("RGB")
+
+    @staticmethod
+    def ensure_bmp_compatible(image: Image.Image) -> Image.Image:
+        """Ensure image is compatible with BMP format.
+
+        Args:
+            image: PIL Image to make BMP-compatible
+
+        Returns:
+            BMP-compatible image
+        """
+        # BMP supports: 1, L, P, RGB modes
+        # BMP can handle RGBA but alpha channel is ignored/flattened
+        if image.mode in ("1", "L", "P", "RGB", "RGBA"):
+            return image
+        elif image.mode == "LA":
+            # LA mode not supported by BMP, convert to RGB
+            return image.convert("RGB")
+        else:
+            # Convert any other modes to RGB for maximum compatibility
+            logger.warning(f"Converting image mode '{image.mode}' to RGB for BMP")
+            return image.convert("RGB")
 
 
 def create_safe_filename(molecular_string: str, extension: str = ".png") -> str:
@@ -26,3 +261,29 @@ def create_safe_filename(molecular_string: str, extension: str = ".png") -> str:
         extension = f".{extension}"
 
     return f"{base_name}{extension}"
+
+
+def build_save_kwargs(format_info: FormatInfo, config) -> dict[str, Any]:
+    """Build save kwargs for PIL Image.save() based on format and config.
+
+    Args:
+        format_info: Format information
+        config: Output configuration
+
+    Returns:
+        Dictionary of kwargs for PIL save
+    """
+    kwargs = {"format": format_info.pil_format}
+
+    if format_info.supports_quality:
+        kwargs.update(
+            {
+                "optimize": config.optimize,
+                "quality": config.quality,
+            }
+        )
+    elif config.optimize:
+        # Some formats support optimize but not quality
+        kwargs["optimize"] = True
+
+    return kwargs

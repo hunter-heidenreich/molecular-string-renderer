@@ -40,7 +40,7 @@ class TestSVGOutputInitialization:
         output = SVGOutput()
         assert output.config is not None
         assert isinstance(output.config, OutputConfig)
-        assert output._molecule is None
+        assert output._strategy is not None
 
     def test_init_with_config(self):
         """Test initialization with explicit config."""
@@ -49,14 +49,14 @@ class TestSVGOutputInitialization:
         assert output.config is config
         assert output.config.quality == 85
         assert output.config.optimize is False
-        assert output._molecule is None
+        assert output._strategy is not None
 
     def test_init_with_none_config(self):
         """Test initialization with None config."""
         output = SVGOutput(None)
         assert output.config is not None
         assert isinstance(output.config, OutputConfig)
-        assert output._molecule is None
+        assert output._strategy is not None
 
 
 class TestSVGOutputMoleculeHandling:
@@ -74,13 +74,13 @@ class TestSVGOutputMoleculeHandling:
         """Test setting molecule for vector SVG generation."""
         output = SVGOutput()
         output.set_molecule(mock_molecule)
-        assert output._molecule is mock_molecule
+        assert output._strategy._vector_strategy._molecule is mock_molecule
 
     def test_set_molecule_none(self):
         """Test setting molecule to None."""
         output = SVGOutput()
         output.set_molecule(None)
-        assert output._molecule is None
+        assert output._strategy._vector_strategy._molecule is None
 
     def test_set_molecule_replaces_previous(self, mock_molecule):
         """Test that setting molecule replaces previous molecule."""
@@ -89,12 +89,12 @@ class TestSVGOutputMoleculeHandling:
         # Set first molecule
         first_mol = MagicMock()
         output.set_molecule(first_mol)
-        assert output._molecule is first_mol
+        assert output._strategy._vector_strategy._molecule is first_mol
 
         # Set second molecule
         output.set_molecule(mock_molecule)
-        assert output._molecule is mock_molecule
-        assert output._molecule is not first_mol
+        assert output._strategy._vector_strategy._molecule is mock_molecule
+        assert output._strategy._vector_strategy._molecule is not first_mol
 
 
 class TestSVGOutputVectorGeneration:
@@ -124,7 +124,7 @@ class TestSVGOutputVectorGeneration:
             output = SVGOutput()
             output.set_molecule(mock_molecule)
 
-            result = output._generate_vector_svg(test_image)
+            result = output.get_bytes(test_image).decode('utf-8')
 
             assert result == mock_svg
             mock_draw.MolToSVG.assert_called_once_with(
@@ -152,7 +152,7 @@ class TestSVGOutputVectorGeneration:
             output = SVGOutput(config)
             output.set_molecule(mock_molecule)
 
-            result = output._generate_vector_svg(test_image)
+            result = output.get_bytes(test_image).decode('utf-8')
 
             assert result == mock_svg
             mock_draw.MolToSVG.assert_called_once_with(
@@ -179,7 +179,7 @@ class TestSVGOutputVectorGeneration:
             output = SVGOutput(config)
             output.set_molecule(mock_molecule)
 
-            result = output._generate_vector_svg(test_image)
+            result = output.get_bytes(test_image).decode('utf-8')
 
             # Should remove comments and extra whitespace
             assert "<!-- Comment line -->" not in result
@@ -192,7 +192,7 @@ class TestSVGOutputVectorGeneration:
         config.__dict__["svg_use_vector"] = False
         output = SVGOutput(config)
 
-        result = output._generate_vector_svg(test_image)
+        result = output.get_bytes(test_image).decode('utf-8')
 
         # Should use raster fallback
         assert "data:image/png;base64," in result
@@ -207,7 +207,7 @@ class TestSVGOutputVectorGeneration:
             output = SVGOutput()
             output.set_molecule(mock_molecule)
 
-            result = output._generate_vector_svg(test_image)
+            result = output.get_bytes(test_image).decode('utf-8')
 
             # Should fall back to raster SVG
             assert "data:image/png;base64," in result
@@ -218,7 +218,7 @@ class TestSVGOutputVectorGeneration:
         output = SVGOutput()
         # Don't set molecule
 
-        result = output._generate_vector_svg(test_image)
+        result = output.get_bytes(test_image).decode('utf-8')
 
         # Should fall back to raster SVG
         assert "data:image/png;base64," in result
@@ -236,7 +236,7 @@ class TestSVGOutputRasterFallback:
     def test_generate_raster_svg(self, test_image):
         """Test raster SVG generation."""
         output = SVGOutput()
-        result = output._generate_raster_svg(test_image)
+        result = output._strategy._raster_strategy.generate_svg(test_image, output.config)
 
         # Should be valid XML
         root = ET.fromstring(result)
@@ -256,7 +256,7 @@ class TestSVGOutputRasterFallback:
     def test_generate_raster_svg_valid_base64(self, test_image):
         """Test that raster SVG contains valid base64 data."""
         output = SVGOutput()
-        result = output._generate_raster_svg(test_image)
+        result = output._strategy._raster_strategy.generate_svg(test_image, output.config)
 
         # Extract base64 data
         root = ET.fromstring(result)
@@ -278,7 +278,7 @@ class TestSVGOutputRasterFallback:
         sizes = [(50, 50), (200, 100), (100, 300)]
         for width, height in sizes:
             image = Image.new("RGB", (width, height), "green")
-            result = output._generate_raster_svg(image)
+            result = output._strategy._raster_strategy.generate_svg(image, output.config)
 
             root = ET.fromstring(result)
             assert root.get("width") == str(width)
@@ -299,11 +299,11 @@ class TestSVGOutputOptimization:
 <svg xmlns="http://www.w3.org/2000/svg">
   <!-- Another comment -->
   <circle cx="50" cy="50" r="10"/>
-  
+
   <rect x="10" y="10" width="20" height="20"/>
 </svg>"""
 
-        result = output._optimize_svg(svg_content)
+        result = output._strategy._vector_strategy._optimize_svg(svg_content)
 
         # Should remove comments
         assert "<!-- This is a comment -->" not in result
@@ -327,10 +327,20 @@ class TestSVGOutputOptimization:
   <circle cx="50" cy="50" r="10"/>
 </svg>"""
 
-        result = output._optimize_svg(svg_content)
-
-        # Should return unchanged
-        assert result == svg_content
+        # When optimization is disabled, we should test the actual behavior
+        # The _optimize_svg method itself always optimizes, but it's only called when config.optimize is True
+        # So let's test that the end result preserves comments when optimization is disabled
+        with patch("rdkit.Chem.Draw") as mock_draw:
+            mock_draw.MolToSVG.return_value = svg_content
+            
+            mock_molecule = MagicMock()
+            output.set_molecule(mock_molecule)
+            image = Image.new("RGB", (100, 100), "red")
+            
+            result = output.get_bytes(image).decode('utf-8')
+            
+            # Since optimization is disabled, comments should be preserved
+            assert "<!-- This is a comment -->" in result
 
     def test_optimize_svg_preserve_structure(self):
         """Test that optimization preserves SVG structure."""
@@ -344,7 +354,7 @@ class TestSVGOutputOptimization:
   </g>
 </svg>"""
 
-        result = output._optimize_svg(svg_content)
+        result = output._strategy._vector_strategy._optimize_svg(svg_content)
 
         # Should still be valid XML
         root = ET.fromstring(result)
@@ -448,7 +458,7 @@ class TestSVGOutputSaveMethod:
         root = ET.fromstring(content)
         assert root.tag == "{http://www.w3.org/2000/svg}svg"
 
-    @patch("molecular_string_renderer.outputs.vector.SVGOutput._generate_vector_svg")
+    @patch("molecular_string_renderer.outputs.svg_strategies.HybridSVGStrategy.generate_svg")
     def test_save_error_handling(self, mock_generate, temp_dir, test_image):
         """Test error handling during save."""
         mock_generate.side_effect = Exception("Mock generation error")
@@ -471,7 +481,7 @@ class TestSVGOutputSaveMethod:
         assert "Successfully saved svg" in log_call
 
     @patch("molecular_string_renderer.outputs.base.logger")
-    @patch("molecular_string_renderer.outputs.vector.SVGOutput._generate_vector_svg")
+    @patch("molecular_string_renderer.outputs.svg_strategies.HybridSVGStrategy.generate_svg")
     def test_save_logs_error(self, mock_generate, mock_logger, temp_dir, test_image):
         """Test that save errors are logged."""
         mock_generate.side_effect = Exception("Mock generation error")
@@ -549,7 +559,7 @@ class TestSVGOutputGetBytesMethod:
         # Should contain base64 embedded image
         assert "data:image/png;base64," in content
 
-    @patch("molecular_string_renderer.outputs.vector.SVGOutput._generate_vector_svg")
+    @patch("molecular_string_renderer.outputs.svg_strategies.HybridSVGStrategy.generate_svg")
     def test_get_bytes_error_handling(self, mock_generate, test_image):
         """Test error handling in get_bytes."""
         mock_generate.side_effect = Exception("Mock generation error")
@@ -717,7 +727,7 @@ class TestSVGOutputEdgeCases:
 <svg xmlns="http://www.w3.org/2000/svg">
 </svg>"""
 
-        result = output._optimize_svg(minimal_svg)
+        result = output._strategy._vector_strategy._optimize_svg(minimal_svg)
 
         # Should still be valid even when minimal
         root = ET.fromstring(result)
@@ -732,10 +742,11 @@ class TestSVGOutputEdgeCases:
 
         # Directly test the exception handling by patching the try block
         with patch(
-            "rdkit.Chem.Draw.MolToSVG", side_effect=ImportError("RDKit not available")
+            "rdkit.Chem.Draw.MolToSVG", 
+            side_effect=ImportError("RDKit not available")
         ):
             # Should fall back to raster without error
-            result = output._generate_vector_svg(image)
+            result = output.get_bytes(image).decode('utf-8')
             assert "data:image/png;base64," in result
 
     def test_molecule_with_rdkit_unavailable(self):
@@ -749,7 +760,7 @@ class TestSVGOutputEdgeCases:
 
         with patch.dict("sys.modules", {"rdkit.Chem": None}):
             # Should fall back gracefully
-            result = output._generate_vector_svg(image)
+            result = output.get_bytes(image).decode('utf-8')
             assert "data:image/png;base64," in result
 
 
@@ -773,8 +784,8 @@ class TestSVGOutputThreadSafety:
         output1.set_molecule(mol1)
         output2.set_molecule(mol2)
 
-        assert output1._molecule is mol1
-        assert output2._molecule is mol2
+        assert output1._strategy._vector_strategy._molecule is mol1
+        assert output2._strategy._vector_strategy._molecule is mol2
 
     def test_instance_method_isolation(self):
         """Test that instance methods don't interfere."""
@@ -784,8 +795,8 @@ class TestSVGOutputThreadSafety:
         image2 = Image.new("RGB", (100, 100), "blue")
 
         # These operations should be independent
-        result1 = output._generate_raster_svg(image1)
-        result2 = output._generate_raster_svg(image2)
+        result1 = output._strategy._raster_strategy.generate_svg(image1, output.config)
+        result2 = output._strategy._raster_strategy.generate_svg(image2, output.config)
 
         # Both should be valid but different
         root1 = ET.fromstring(result1)
@@ -842,8 +853,8 @@ class TestSVGOutputTypeHints:
 
         # Test method return types
         assert isinstance(output.get_bytes(image), bytes)
-        assert isinstance(output._generate_raster_svg(image), str)
-        assert isinstance(output._optimize_svg("<svg></svg>"), str)
+        assert isinstance(output._strategy._raster_strategy.generate_svg(image, output.config), str)
+        assert isinstance(output._strategy._vector_strategy._optimize_svg("<svg></svg>"), str)
 
     def test_method_accepts_correct_types(self):
         """Test that methods accept correct input types."""
@@ -852,7 +863,7 @@ class TestSVGOutputTypeHints:
 
         # These should not raise type errors
         output.get_bytes(image)
-        output._generate_raster_svg(image)
+        output._strategy._raster_strategy.generate_svg(image, output.config)
         output.set_molecule(None)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -870,8 +881,8 @@ class TestSVGOutputSpecificBugTests:
         image = Image.new("RGB", (50, 50), "red")
 
         # Generate multiple times
-        result1 = output._generate_raster_svg(image)
-        result2 = output._generate_raster_svg(image)
+        result1 = output._strategy._raster_strategy.generate_svg(image, output.config)
+        result2 = output._strategy._raster_strategy.generate_svg(image, output.config)
 
         # Should be identical (deterministic)
         assert result1 == result2
@@ -891,7 +902,7 @@ class TestSVGOutputSpecificBugTests:
         output = SVGOutput()
         image = Image.new("RGB", (50, 50), "blue")
 
-        result = output._generate_raster_svg(image)
+        result = output._strategy._raster_strategy.generate_svg(image, output.config)
         root = ET.fromstring(result)
 
         # Should have proper namespaces
@@ -921,7 +932,7 @@ class TestSVGOutputSpecificBugTests:
             mock_molecule = MagicMock()
             output.set_molecule(mock_molecule)
 
-            result = output._generate_vector_svg(image)
+            result = output.get_bytes(image).decode('utf-8')
 
             # Should remove comments but preserve functionality
             assert "<!-- Comment to remove -->" not in result
@@ -944,7 +955,7 @@ class TestSVGOutputSpecificBugTests:
   <text>Benzène résumé naïve</text>
 </svg>"""
 
-        result = output._optimize_svg(svg_with_unicode)
+        result = output._strategy._vector_strategy._optimize_svg(svg_with_unicode)
 
         # Should preserve unicode content
         assert "Benzène" in result

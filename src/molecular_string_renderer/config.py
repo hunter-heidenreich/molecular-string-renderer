@@ -156,6 +156,8 @@ class OutputConfig(BaseModel):
         quality: Output quality from 1-100.
         optimize: Optimize output file size.
         svg_sanitize: Sanitize SVG output for security.
+        svg_use_vector: Use true vector SVG rendering when possible.
+        svg_line_width_mult: Line width multiplier for SVG rendering.
     """
 
     format: str = Field(default="png", description="Output format (png, svg, etc.)")
@@ -163,6 +165,12 @@ class OutputConfig(BaseModel):
     optimize: bool = Field(default=True, description="Optimize output file size")
     svg_sanitize: bool = Field(
         default=True, description="Sanitize SVG output for security"
+    )
+    svg_use_vector: bool = Field(
+        default=True, description="Use true vector SVG rendering when possible"
+    )
+    svg_line_width_mult: float = Field(
+        default=1.0, ge=0.1, le=5.0, description="Line width multiplier for SVG rendering"
     )
 
     @field_validator("format")
