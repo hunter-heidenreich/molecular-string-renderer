@@ -157,11 +157,11 @@ class RasterOutputHandler(RegistryBasedOutputHandler):
 
     def get_bytes(self, image: Image.Image) -> bytes:
         """Get image as raster bytes."""
-        buffer = BytesIO()
-        prepared_image = self._prepare_image(image)
-        save_kwargs = self._get_save_kwargs()
-        prepared_image.save(buffer, **save_kwargs)
-        return buffer.getvalue()
+        with BytesIO() as buffer:
+            prepared_image = self._prepare_image(image)
+            save_kwargs = self._get_save_kwargs()
+            prepared_image.save(buffer, **save_kwargs)
+            return buffer.getvalue()
 
 
 class VectorOutputHandler(RegistryBasedOutputHandler):

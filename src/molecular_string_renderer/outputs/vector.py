@@ -100,50 +100,50 @@ class PDFOutput(VectorOutputHandler):
         from reportlab.pdfgen import canvas
 
         # Create a canvas for the PDF in memory
-        buffer = BytesIO()
-        c = canvas.Canvas(buffer, pagesize=letter)
+        with BytesIO() as buffer:
+            c = canvas.Canvas(buffer, pagesize=letter)
 
-        # Get page dimensions
-        page_width, page_height = letter
+            # Get page dimensions
+            page_width, page_height = letter
 
-        # Calculate image dimensions to fit on page with some margin
-        margin = 0.5 * inch
-        max_width = page_width - 2 * margin
-        max_height = page_height - 2 * margin
+            # Calculate image dimensions to fit on page with some margin
+            margin = 0.5 * inch
+            max_width = page_width - 2 * margin
+            max_height = page_height - 2 * margin
 
-        # Convert PIL image to RGB if it isn't already
-        rgb_image = image.convert("RGB")
+            # Convert PIL image to RGB if it isn't already
+            rgb_image = image.convert("RGB")
 
-        # Calculate scale factor to fit image on page
-        img_width, img_height = rgb_image.size
-        scale_x = max_width / img_width
-        scale_y = max_height / img_height
-        scale = min(scale_x, scale_y)
+            # Calculate scale factor to fit image on page
+            img_width, img_height = rgb_image.size
+            scale_x = max_width / img_width
+            scale_y = max_height / img_height
+            scale = min(scale_x, scale_y)
 
-        # Calculate actual dimensions
-        actual_width = img_width * scale
-        actual_height = img_height * scale
+            # Calculate actual dimensions
+            actual_width = img_width * scale
+            actual_height = img_height * scale
 
-        # Calculate position to center the image
-        x = (page_width - actual_width) / 2
-        y = (page_height - actual_height) / 2
+            # Calculate position to center the image
+            x = (page_width - actual_width) / 2
+            y = (page_height - actual_height) / 2
 
-        # Save image to temporary buffer for embedding
-        img_buffer = BytesIO()
-        rgb_image.save(img_buffer, format="PNG")
-        img_buffer.seek(0)
+            # Save image to temporary buffer for embedding
+            with BytesIO() as img_buffer:
+                rgb_image.save(img_buffer, format="PNG")
+                img_buffer.seek(0)
 
-        # Draw the image on the PDF using the buffer directly
-        img_reader = ImageReader(img_buffer)
-        c.drawImage(
-            img_reader,
-            x,
-            y,
-            width=actual_width,
-            height=actual_height,
-            preserveAspectRatio=True,
-        )
+                # Draw the image on the PDF using the buffer directly
+                img_reader = ImageReader(img_buffer)
+                c.drawImage(
+                    img_reader,
+                    x,
+                    y,
+                    width=actual_width,
+                    height=actual_height,
+                    preserveAspectRatio=True,
+                )
 
-        # Save the PDF and get bytes
-        c.save()
-        return buffer.getvalue()
+            # Save the PDF and get bytes
+            c.save()
+            return buffer.getvalue()
