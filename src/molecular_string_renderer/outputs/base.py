@@ -80,8 +80,9 @@ class OutputHandler(ABC):
 
     def _handle_save_error(self, path: Path, error: Exception) -> None:
         """Handle and log save errors consistently."""
-        logger.error(f"Failed to save {self.format_name} to '{path}': {error}")
-        raise IOError(f"Failed to save {self.format_name} to '{path}': {error}")
+        error_msg = f"Failed to save {self.format_name} to '{path}': {error}"
+        logger.error(error_msg)
+        raise IOError(error_msg)
 
     def _log_success(self, path: Path) -> None:
         """Log successful save operation."""
@@ -142,26 +143,42 @@ class RasterOutputHandler(RegistryBasedOutputHandler):
         """Get keyword arguments for PIL save method."""
         return build_save_kwargs(self._format_info, self.config)
 
+    def _save_to_destination(self, image: Image.Image, destination: BytesIO | Path) -> None:
+        """
+        Save prepared image to destination (file path or buffer).
+        
+        Args:
+            image: PIL Image to save
+            destination: File path or BytesIO buffer to save to
+            
+        Raises:
+            OSError: If save operation fails
+            ValueError: If image format is invalid
+        """
+        prepared_image = self._prepare_image(image)
+        save_kwargs = self._get_save_kwargs()
+        prepared_image.save(destination, **save_kwargs)
+
     def save(self, image: Image.Image, output_path: str | Path) -> None:
         """Save image as raster file."""
         path = self._ensure_output_directory(output_path)
         path = self._ensure_extension(path, self.valid_extensions)
 
         try:
-            prepared_image = self._prepare_image(image)
-            save_kwargs = self._get_save_kwargs()
-            prepared_image.save(path, **save_kwargs)
+            self._save_to_destination(image, path)
             self._log_success(path)
-        except Exception as e:
+        except (OSError, ValueError) as e:
             self._handle_save_error(path, e)
 
     def get_bytes(self, image: Image.Image) -> bytes:
         """Get image as raster bytes."""
         with BytesIO() as buffer:
-            prepared_image = self._prepare_image(image)
-            save_kwargs = self._get_save_kwargs()
-            prepared_image.save(buffer, **save_kwargs)
-            return buffer.getvalue()
+            try:
+                self._save_to_destination(image, buffer)
+                return buffer.getvalue()
+            except (OSError, ValueError) as e:
+                logger.error(f"Failed to convert {self.format_name} to bytes: {e}")
+                raise IOError(f"Failed to convert {self.format_name} to bytes: {e}")
 
 
 class VectorOutputHandler(RegistryBasedOutputHandler):
