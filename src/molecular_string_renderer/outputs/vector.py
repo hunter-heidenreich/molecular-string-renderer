@@ -9,6 +9,10 @@ from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas
 
 from molecular_string_renderer.outputs.base import VectorOutputHandler
 from molecular_string_renderer.outputs.svg_strategies import HybridSVGStrategy
@@ -19,12 +23,16 @@ logger = logging.getLogger(__name__)
 class SVGOutput(VectorOutputHandler):
     """SVG output handler with configurable generation strategy."""
 
-    def __init__(self, config=None):
-        """Initialize SVG output handler."""
+    def __init__(self, config: object = None):
+        """Initialize SVG output handler.
+        
+        Args:
+            config: Output configuration object
+        """
         super().__init__("svg", config)
         self._strategy = HybridSVGStrategy()
 
-    def set_molecule(self, mol) -> None:
+    def set_molecule(self, mol: object) -> None:
         """Set the molecule for vector SVG generation.
 
         Args:
@@ -55,8 +63,12 @@ class SVGOutput(VectorOutputHandler):
 class PDFOutput(VectorOutputHandler):
     """PDF output handler using ReportLab."""
 
-    def __init__(self, config=None):
-        """Initialize PDF output handler."""
+    def __init__(self, config: object = None):
+        """Initialize PDF output handler.
+        
+        Args:
+            config: Output configuration object
+        """
         super().__init__("pdf", config)
 
     def save(self, image: Image.Image, output_path: str | Path) -> None:
@@ -77,9 +89,6 @@ class PDFOutput(VectorOutputHandler):
         """Get image as PDF bytes."""
         try:
             return self._generate_pdf_bytes(image)
-        except ImportError as e:
-            logger.error(f"ReportLab not available for PDF generation: {e}")
-            raise IOError(f"ReportLab not available for PDF generation: {e}")
         except Exception as e:
             logger.error(f"Failed to generate PDF bytes: {e}")
             raise IOError(f"Failed to generate PDF bytes: {e}")
@@ -93,13 +102,6 @@ class PDFOutput(VectorOutputHandler):
         Returns:
             PDF data as bytes
         """
-        # Import reportlab modules
-        from reportlab.lib.pagesizes import letter
-        from reportlab.lib.units import inch
-        from reportlab.lib.utils import ImageReader
-        from reportlab.pdfgen import canvas
-
-        # Create a canvas for the PDF in memory
         with BytesIO() as buffer:
             c = canvas.Canvas(buffer, pagesize=letter)
 
@@ -133,7 +135,6 @@ class PDFOutput(VectorOutputHandler):
                 rgb_image.save(img_buffer, format="PNG")
                 img_buffer.seek(0)
 
-                # Draw the image on the PDF using the buffer directly
                 img_reader = ImageReader(img_buffer)
                 c.drawImage(
                     img_reader,
@@ -144,6 +145,5 @@ class PDFOutput(VectorOutputHandler):
                     preserveAspectRatio=True,
                 )
 
-            # Save the PDF and get bytes
             c.save()
             return buffer.getvalue()

@@ -117,8 +117,8 @@ class TestSVGOutputVectorGeneration:
         # Mock RDKit Draw module
         mock_svg = '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="10"/></svg>'
 
-        # Patch the import and the Draw module
-        with patch("rdkit.Chem.Draw") as mock_draw:
+        # Patch the Draw module in the svg_strategies module where it's imported
+        with patch("molecular_string_renderer.outputs.svg_strategies.Draw") as mock_draw:
             mock_draw.MolToSVG.return_value = mock_svg
 
             output = SVGOutput()
@@ -142,7 +142,7 @@ class TestSVGOutputVectorGeneration:
         """Test vector SVG generation with custom line width multiplier."""
         mock_svg = '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="10"/></svg>'
 
-        with patch("rdkit.Chem.Draw") as mock_draw:
+        with patch("molecular_string_renderer.outputs.svg_strategies.Draw") as mock_draw:
             mock_draw.MolToSVG.return_value = mock_svg
 
             # Create config and output
@@ -172,7 +172,7 @@ class TestSVGOutputVectorGeneration:
   <circle cx="50" cy="50" r="10"/>
 </svg>"""
 
-        with patch("rdkit.Chem.Draw") as mock_draw:
+        with patch("molecular_string_renderer.outputs.svg_strategies.Draw") as mock_draw:
             mock_draw.MolToSVG.return_value = mock_svg
 
             config = OutputConfig(optimize=True)
@@ -200,7 +200,7 @@ class TestSVGOutputVectorGeneration:
 
     def test_generate_vector_svg_rdkit_error_fallback(self, test_image, mock_molecule):
         """Test fallback to raster when RDKit fails."""
-        with patch("rdkit.Chem.Draw") as mock_draw:
+        with patch("molecular_string_renderer.outputs.svg_strategies.Draw") as mock_draw:
             # Mock RDKit Draw.MolToSVG to raise an exception
             mock_draw.MolToSVG.side_effect = Exception("RDKit error")
 
@@ -330,7 +330,7 @@ class TestSVGOutputOptimization:
         # When optimization is disabled, we should test the actual behavior
         # The _optimize_svg method itself always optimizes, but it's only called when config.optimize is True
         # So let's test that the end result preserves comments when optimization is disabled
-        with patch("rdkit.Chem.Draw") as mock_draw:
+        with patch("molecular_string_renderer.outputs.svg_strategies.Draw") as mock_draw:
             mock_draw.MolToSVG.return_value = svg_content
             
             mock_molecule = MagicMock()
@@ -536,7 +536,7 @@ class TestSVGOutputGetBytesMethod:
         """Test get_bytes with molecule for vector SVG."""
         mock_svg = '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="10"/></svg>'
 
-        with patch("rdkit.Chem.Draw") as mock_draw:
+        with patch("molecular_string_renderer.outputs.svg_strategies.Draw") as mock_draw:
             mock_draw.MolToSVG.return_value = mock_svg
 
             mock_molecule = MagicMock()
@@ -584,7 +584,7 @@ class TestSVGOutputIntegration:
   <circle cx="100" cy="100" r="50" fill="red"/>
 </svg>"""
 
-        with patch("rdkit.Chem.Draw") as mock_draw:
+        with patch("molecular_string_renderer.outputs.svg_strategies.Draw") as mock_draw:
             mock_draw.MolToSVG.return_value = mock_svg
 
             config = OutputConfig(optimize=True)
@@ -923,7 +923,7 @@ class TestSVGOutputSpecificBugTests:
   <circle cx="50" cy="50" r="25" fill="red"/>
 </svg>"""
 
-        with patch("rdkit.Chem.Draw") as mock_draw:
+        with patch("molecular_string_renderer.outputs.svg_strategies.Draw") as mock_draw:
             mock_draw.MolToSVG.return_value = mock_svg
 
             config = OutputConfig(optimize=True)
