@@ -5,6 +5,7 @@ Provides a centralized way to create appropriate output handlers for different f
 """
 
 import logging
+from typing import Type
 
 from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs.base import OutputHandler
@@ -18,6 +19,53 @@ from molecular_string_renderer.outputs.raster import (
 from molecular_string_renderer.outputs.vector import PDFOutput, SVGOutput
 
 logger = logging.getLogger(__name__)
+
+# Handler mapping - centralized for easy maintenance
+_OUTPUT_HANDLERS: dict[str, Type[OutputHandler]] = {
+    "png": PNGOutput,
+    "svg": SVGOutput,
+    "jpg": JPEGOutput,
+    "jpeg": JPEGOutput,
+    "pdf": PDFOutput,
+    "webp": WEBPOutput,
+    "tiff": TIFFOutput,
+    "tif": TIFFOutput,  # Alternative extension for TIFF
+    "bmp": BMPOutput,
+}
+
+
+def get_supported_formats() -> list[str]:
+    """
+    Get list of supported output formats.
+    
+    Returns:
+        List of supported format strings
+    """
+    return list(_OUTPUT_HANDLERS.keys())
+
+
+def _validate_format(format_type: str) -> str:
+    """
+    Validate and normalize format type.
+    
+    Args:
+        format_type: Raw format type string
+        
+    Returns:
+        Normalized format type
+        
+    Raises:
+        ValueError: If format type is not supported
+    """
+    normalized_format = format_type.lower().strip()
+    
+    if normalized_format not in _OUTPUT_HANDLERS:
+        supported_formats = get_supported_formats()
+        error_msg = f"Unsupported output format: {format_type}. Supported: {supported_formats}"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    return normalized_format
 
 
 def get_output_handler(
@@ -36,28 +84,8 @@ def get_output_handler(
     Raises:
         ValueError: If format type is not supported
     """
-    format_type = format_type.lower().strip()
-
-    handlers = {
-        "png": PNGOutput,
-        "svg": SVGOutput,
-        "jpg": JPEGOutput,
-        "jpeg": JPEGOutput,
-        "pdf": PDFOutput,
-        "webp": WEBPOutput,
-        "tiff": TIFFOutput,
-        "tif": TIFFOutput,  # Alternative extension for TIFF
-        "bmp": BMPOutput,
-    }
-
-    if format_type not in handlers:
-        supported = list(handlers.keys())
-        logger.error(
-            f"Unsupported output format: {format_type}. Supported formats: {supported}"
-        )
-        raise ValueError(
-            f"Unsupported output format: {format_type}. Supported: {supported}"
-        )
-
-    logger.debug(f"Creating {format_type} output handler")
-    return handlers[format_type](config)
+    validated_format = _validate_format(format_type)
+    handler_class = _OUTPUT_HANDLERS[validated_format]
+    
+    logger.debug(f"Creating {validated_format} output handler")
+    return handler_class(config)

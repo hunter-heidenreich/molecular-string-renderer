@@ -152,8 +152,7 @@ class RasterOutputHandler(RegistryBasedOutputHandler):
             destination: File path or BytesIO buffer to save to
             
         Raises:
-            OSError: If save operation fails
-            ValueError: If image format is invalid
+            Exception: If save operation fails (various PIL exceptions possible)
         """
         prepared_image = self._prepare_image(image)
         save_kwargs = self._get_save_kwargs()
@@ -167,7 +166,7 @@ class RasterOutputHandler(RegistryBasedOutputHandler):
         try:
             self._save_to_destination(image, path)
             self._log_success(path)
-        except (OSError, ValueError) as e:
+        except Exception as e:
             self._handle_save_error(path, e)
 
     def get_bytes(self, image: Image.Image) -> bytes:
@@ -177,8 +176,9 @@ class RasterOutputHandler(RegistryBasedOutputHandler):
                 self._save_to_destination(image, buffer)
                 return buffer.getvalue()
             except (OSError, ValueError) as e:
-                logger.error(f"Failed to convert {self.format_name} to bytes: {e}")
-                raise IOError(f"Failed to convert {self.format_name} to bytes: {e}")
+                error_msg = f"Failed to convert {self.format_name} to bytes: {e}"
+                logger.error(error_msg)
+                raise IOError(error_msg)
 
 
 class VectorOutputHandler(RegistryBasedOutputHandler):
