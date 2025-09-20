@@ -332,7 +332,7 @@ class TestOutputHandlerQualityAndOptimization:
         # All formats should produce valid output regardless of quality support
         assert len(high_quality_bytes) > 0
         assert len(low_quality_bytes) > 0
-        
+
         # For formats that don't support quality, sizes should be similar
         # (PDF may have slight variations due to timestamps, etc.)
         if supports_quality(format_name):
@@ -364,7 +364,7 @@ class TestOutputHandlerQualityAndOptimization:
         # All formats should produce valid output regardless of optimization support
         assert len(optimized_bytes) > 0
         assert len(unoptimized_bytes) > 0
-        
+
         # For formats that don't support optimization, output should be similar
         # (PDF may have slight variations due to timestamps, etc.)
         if not supports_optimization(format_name):
