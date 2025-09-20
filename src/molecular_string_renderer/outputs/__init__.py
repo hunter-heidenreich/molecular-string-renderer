@@ -20,13 +20,11 @@ __all__ = [
     "OutputHandler",
     "get_output_handler",
     "create_safe_filename",
-    # Raster formats
     "PNGOutput",
     "JPEGOutput",
     "WEBPOutput",
     "TIFFOutput",
     "BMPOutput",
-    # Vector/document formats
     "SVGOutput",
     "PDFOutput",
 ]
