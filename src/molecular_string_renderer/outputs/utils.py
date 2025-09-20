@@ -191,7 +191,9 @@ class ImageModeUtils:
         return image
 
     @staticmethod
-    def _convert_to_rgb_with_warning(image: Image.Image, format_name: str) -> Image.Image:
+    def _convert_to_rgb_with_warning(
+        image: Image.Image, format_name: str
+    ) -> Image.Image:
         """Convert image to RGB with appropriate warning."""
         logger.warning(f"Converting image mode '{image.mode}' to RGB for {format_name}")
         return image.convert("RGB")

@@ -170,7 +170,10 @@ class OutputConfig(BaseModel):
         default=True, description="Use true vector SVG rendering when possible"
     )
     svg_line_width_mult: float = Field(
-        default=1.0, ge=0.1, le=5.0, description="Line width multiplier for SVG rendering"
+        default=1.0,
+        ge=0.1,
+        le=5.0,
+        description="Line width multiplier for SVG rendering",
     )
 
     @field_validator("format")

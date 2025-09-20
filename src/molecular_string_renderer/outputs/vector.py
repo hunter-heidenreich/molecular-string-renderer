@@ -30,7 +30,7 @@ class SVGOutput(VectorOutputHandler):
 
     def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize SVG output handler.
-        
+
         Args:
             config: Output configuration object
         """
@@ -70,7 +70,7 @@ class PDFOutput(VectorOutputHandler):
 
     def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize PDF output handler.
-        
+
         Args:
             config: Output configuration object
         """

@@ -143,14 +143,16 @@ class RasterOutputHandler(RegistryBasedOutputHandler):
         """Get keyword arguments for PIL save method."""
         return build_save_kwargs(self._format_info, self.config)
 
-    def _save_to_destination(self, image: Image.Image, destination: BytesIO | Path) -> None:
+    def _save_to_destination(
+        self, image: Image.Image, destination: BytesIO | Path
+    ) -> None:
         """
         Save prepared image to destination (file path or buffer).
-        
+
         Args:
             image: PIL Image to save
             destination: File path or BytesIO buffer to save to
-            
+
         Raises:
             Exception: If save operation fails (various PIL exceptions possible)
         """

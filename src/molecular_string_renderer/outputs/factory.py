@@ -36,7 +36,7 @@ _OUTPUT_HANDLERS: dict[str, type[OutputHandler]] = {
 def get_supported_formats() -> list[str]:
     """
     Get list of supported output formats.
-    
+
     Returns:
         List of supported format strings
     """
@@ -46,24 +46,26 @@ def get_supported_formats() -> list[str]:
 def _validate_format(format_type: str) -> str:
     """
     Validate and normalize format type.
-    
+
     Args:
         format_type: Raw format type string
-        
+
     Returns:
         Normalized format type
-        
+
     Raises:
         ValueError: If format type is not supported
     """
     normalized_format = format_type.lower().strip()
-    
+
     if normalized_format not in _OUTPUT_HANDLERS:
         supported_formats = get_supported_formats()
-        error_msg = f"Unsupported output format: {format_type}. Supported: {supported_formats}"
+        error_msg = (
+            f"Unsupported output format: {format_type}. Supported: {supported_formats}"
+        )
         logger.error(error_msg)
         raise ValueError(error_msg)
-    
+
     return normalized_format
 
 
@@ -85,6 +87,6 @@ def get_output_handler(
     """
     validated_format = _validate_format(format_type)
     handler_class = _OUTPUT_HANDLERS[validated_format]
-    
+
     logger.debug(f"Creating {validated_format} output handler")
     return handler_class(config)
