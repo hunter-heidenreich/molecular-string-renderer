@@ -35,7 +35,7 @@ class SVGGenerationStrategy(ABC):
         Returns:
             SVG content as string
         """
-        pass
+        pass  # pragma: no cover
 
 
 class VectorSVGStrategy(SVGGenerationStrategy):

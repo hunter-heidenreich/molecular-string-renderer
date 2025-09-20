@@ -38,7 +38,7 @@ class OutputHandler(ABC):
             image: PIL Image to save
             output_path: Path where image should be saved
         """
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def get_bytes(self, image: Image.Image) -> bytes:
@@ -51,19 +51,19 @@ class OutputHandler(ABC):
         Returns:
             Image data as bytes
         """
-        pass
+        pass  # pragma: no cover
 
     @property
     @abstractmethod
     def file_extension(self) -> str:
         """Get the file extension for this output format."""
-        pass
+        pass  # pragma: no cover
 
     @property
     @abstractmethod
     def format_name(self) -> str:
         """Get the PIL format name for this output format."""
-        pass
+        pass  # pragma: no cover
 
     def _ensure_output_directory(self, output_path: str | Path) -> Path:
         """Ensure output directory exists and return normalized path."""
