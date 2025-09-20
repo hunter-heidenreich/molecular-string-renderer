@@ -20,6 +20,8 @@ class MockParser(MolecularParser):
     
     def validate(self, molecular_string: str) -> bool:
         """Mock validate that rejects 'invalid' strings."""
+        if not molecular_string or not molecular_string.strip():
+            return False
         return molecular_string != "invalid"
 
 
@@ -171,3 +173,25 @@ class TestMockParserImplementation:
         """Test validation with invalid input."""
         parser = MockParser()
         assert parser.validate("invalid") is False
+
+
+class TestConfigurationEdgeCases:
+    """Test edge cases in parser configuration."""
+    
+    def test_sanitization_with_problematic_molecule(self):
+        """Test sanitization with molecules that might cause issues."""
+        # Create a parser with sanitization enabled
+        config = ParserConfig(sanitize=True, remove_hs=True)
+        parser = MockParser(config)
+        
+        # Parse a molecule that should sanitize fine
+        mol = parser.parse("anything")
+        assert mol is not None
+    
+    def test_validation_with_none_values(self):
+        """Test validation methods handle None values correctly."""
+        parser = MockParser()
+        
+        assert parser.validate(None) is False
+        assert parser.validate("") is False
+        assert parser.validate("   ") is False

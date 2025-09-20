@@ -4,6 +4,7 @@ Tests for the SELFIES parser implementation.
 
 import pytest
 from rdkit import Chem
+from unittest.mock import patch
 
 from molecular_string_renderer.config import ParserConfig
 from molecular_string_renderer.parsers.selfies import SELFIESParser
@@ -191,3 +192,44 @@ class TestSELFIESPostProcessing:
         
         error_message = str(exc_info.value)
         assert invalid_selfies in error_message
+
+
+class TestSELFIESExceptionHandling:
+    """Test SELFIES parser exception handling edge cases."""
+    
+    def test_rdkit_exception_reraising(self):
+        """Test that RDKit exceptions are properly re-raised."""
+        parser = SELFIESParser()
+        
+        # Mock sf.decoder to return a valid SMILES, but MolFromSmiles to fail
+        with patch('molecular_string_renderer.parsers.selfies.sf.decoder') as mock_decoder:
+            mock_decoder.return_value = "CCO"
+            
+            with patch('molecular_string_renderer.parsers.selfies.Chem.MolFromSmiles') as mock_mol_from_smiles:
+                mock_mol_from_smiles.side_effect = ValueError("Invalid SELFIES: test error")
+                
+                with pytest.raises(ValueError, match="Invalid SELFIES: test error"):
+                    parser.parse("[C][C][O]")
+    
+    def test_decoder_exception(self):
+        """Test SELFIES parser handles decoder exceptions."""
+        parser = SELFIESParser()
+        
+        # Mock sf.decoder to raise an exception
+        with patch('molecular_string_renderer.parsers.selfies.sf.decoder') as mock_decoder:
+            mock_decoder.side_effect = RuntimeError("SELFIES decoder error")
+            
+            with pytest.raises(ValueError, match="Failed to parse SELFIES '\\[C\\]': SELFIES decoder error"):
+                parser.parse("[C]")
+    
+    def test_validation_exception_handling(self):
+        """Test SELFIES validation with exception conditions."""
+        parser = SELFIESParser()
+        
+        # Mock decoder to raise an exception during validation
+        with patch('molecular_string_renderer.parsers.selfies.sf.decoder') as mock_decoder:
+            mock_decoder.side_effect = RuntimeError("Decoder exception")
+            
+            # Should return False instead of raising
+            result = parser.validate("[C][C][O]")
+            assert result is False

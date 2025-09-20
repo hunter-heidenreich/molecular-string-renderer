@@ -6,6 +6,7 @@ Tests that the new sub-module structure integrates correctly with the rest of th
 
 import pytest
 from rdkit import Chem
+from rdkit.Chem import rdMolDescriptors
 
 from molecular_string_renderer.parsers import (
     MolecularParser,
@@ -244,3 +245,73 @@ class TestDocumentationAndMetadata:
         assert get_parser.__doc__ is not None
         assert len(get_parser.__doc__.strip()) > 0
         assert "factory" in get_parser.__doc__.lower() or "Factory" in get_parser.__doc__
+
+
+class TestCrossFormatValidation:
+    """Test consistency between different molecular formats."""
+    
+    def test_smiles_to_inchi_consistency(self):
+        """Test that SMILES can be converted to InChI and back."""
+        smiles_parser = SMILESParser()
+        inchi_parser = InChIParser()
+        
+        # Simple molecule
+        original_smiles = "CCO"
+        mol1 = smiles_parser.parse(original_smiles)
+        
+        # Convert to InChI
+        inchi = Chem.MolToInchi(mol1)
+        
+        # Parse the InChI
+        mol2 = inchi_parser.parse(inchi)
+        
+        # Both should represent the same molecule
+        assert mol1 is not None
+        assert mol2 is not None
+        
+        # Compare molecular formulas
+        formula1 = rdMolDescriptors.CalcMolFormula(mol1)
+        formula2 = rdMolDescriptors.CalcMolFormula(mol2)
+        assert formula1 == formula2
+    
+    def test_selfies_to_smiles_consistency(self):
+        """Test that SELFIES can be converted to SMILES consistently."""
+        selfies_parser = SELFIESParser()
+        smiles_parser = SMILESParser()
+        
+        # Use SELFIES that we know should work
+        selfies_string = "[C][C][O]"
+        mol1 = selfies_parser.parse(selfies_string)
+        
+        # Convert back to SMILES
+        canonical_smiles = Chem.MolToSmiles(mol1)
+        mol2 = smiles_parser.parse(canonical_smiles)
+        
+        # Both should represent the same molecule
+        assert mol1 is not None
+        assert mol2 is not None
+        
+        # Compare molecular formulas
+        formula1 = rdMolDescriptors.CalcMolFormula(mol1)
+        formula2 = rdMolDescriptors.CalcMolFormula(mol2)
+        assert formula1 == formula2
+
+
+class TestMemoryAndPerformance:
+    """Test memory usage and performance characteristics."""
+    
+    def test_many_small_molecules_parsing(self):
+        """Test parsing many small molecules doesn't leak memory."""
+        parser = SMILESParser()
+        
+        # Parse many small molecules
+        small_molecules = ["C", "CC", "CCC", "CCCC", "CCO", "CCC(=O)O"] * 100
+        
+        parsed_mols = []
+        for smiles in small_molecules:
+            mol = parser.parse(smiles)
+            assert mol is not None
+            parsed_mols.append(mol)
+        
+        # Should have parsed all molecules successfully
+        assert len(parsed_mols) == 600

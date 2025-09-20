@@ -4,6 +4,7 @@ Tests for the SMILES parser implementation.
 
 import pytest
 from rdkit import Chem
+from unittest.mock import patch
 
 from molecular_string_renderer.config import ParserConfig
 from molecular_string_renderer.parsers.smiles import SMILESParser
@@ -229,3 +230,116 @@ class TestSMILESPostProcessing:
         
         error_message = str(exc_info.value)
         assert invalid_smiles in error_message
+
+
+class TestSMILESExceptionHandling:
+    """Test SMILES parser exception handling edge cases."""
+    
+    def test_rdkit_exception_reraising(self):
+        """Test that RDKit exceptions are properly re-raised."""
+        parser = SMILESParser()
+        
+        # Mock Chem.MolFromSmiles to raise an exception with "Invalid SMILES" message
+        with patch('molecular_string_renderer.parsers.smiles.Chem.MolFromSmiles') as mock_mol_from_smiles:
+            mock_mol_from_smiles.side_effect = ValueError("Invalid SMILES: test error")
+            
+            with pytest.raises(ValueError, match="Invalid SMILES: test error"):
+                parser.parse("CCO")
+    
+    def test_generic_exception_wrapping(self):
+        """Test that generic exceptions are wrapped with context."""
+        parser = SMILESParser()
+        
+        # Mock Chem.MolFromSmiles to raise a generic exception
+        with patch('molecular_string_renderer.parsers.smiles.Chem.MolFromSmiles') as mock_mol_from_smiles:
+            mock_mol_from_smiles.side_effect = RuntimeError("Some internal RDKit error")
+            
+            with pytest.raises(ValueError, match="Failed to parse SMILES 'CCO': Some internal RDKit error"):
+                parser.parse("CCO")
+    
+    def test_validation_exception_handling(self):
+        """Test SMILES validation with exception conditions."""
+        parser = SMILESParser()
+        
+        # Mock MolFromSmiles to raise an exception during validation
+        with patch('molecular_string_renderer.parsers.smiles.Chem.MolFromSmiles') as mock_mol_from_smiles:
+            mock_mol_from_smiles.side_effect = RuntimeError("Validation exception")
+            
+            # Should return False instead of raising
+            result = parser.validate("CCO")
+            assert result is False
+
+
+class TestSMILESEdgeCases:
+    """Test SMILES parser with edge case molecules."""
+    
+    def test_parse_isotope_molecules(self):
+        """Test parsing molecules with isotopes."""
+        parser = SMILESParser()
+        
+        # Deuterium water
+        deuterium_water = "[2H]O[2H]"
+        mol = parser.parse(deuterium_water)
+        assert mol is not None
+        
+        # Check that isotope information is preserved
+        atoms = list(mol.GetAtoms())
+        deuterium_atoms = [atom for atom in atoms if atom.GetSymbol() == 'H' and atom.GetIsotope() == 2]
+        assert len(deuterium_atoms) == 2
+    
+    def test_parse_charged_molecules(self):
+        """Test parsing molecules with formal charges."""
+        parser = SMILESParser()
+        
+        # Charged species
+        test_cases = [
+            "[Na+]",  # Sodium cation
+            "[Cl-]",  # Chloride anion
+            "[NH4+]",  # Ammonium ion
+        ]
+        
+        for smiles in test_cases:
+            mol = parser.parse(smiles)
+            assert mol is not None, f"Failed to parse charged molecule: {smiles}"
+    
+    def test_parse_radical_molecules(self):
+        """Test parsing molecules with radicals."""
+        parser = SMILESParser()
+        
+        # Methyl radical
+        methyl_radical = "[CH3]"
+        mol = parser.parse(methyl_radical)
+        assert mol is not None
+    
+    def test_large_molecule_parsing(self):
+        """Test parsing of large molecules."""
+        parser = SMILESParser()
+        
+        # A moderately large molecule (Taxol - anticancer drug)
+        taxol_smiles = "CC1=C2[C@@]([C@]([C@H]([C@@H]3[C@]4([C@H](OC4)C[C@@H]([C@]3(C(=O)[C@@H]2OC(=O)C)C)O)OC(=O)C)OC(=O)c5ccccc5)(C[C@@H]1OC(=O)[C@H](O)[C@@H](NC(=O)c6ccccc6)c7ccccc7)O)(C)C"
+        
+        mol = parser.parse(taxol_smiles)
+        assert mol is not None
+        assert mol.GetNumAtoms() > 50  # Taxol is a large molecule
+    
+    def test_hydrogen_handling_with_explicit_hydrogens(self):
+        """Test hydrogen handling with molecules that have explicit hydrogens."""
+        # Test with hydrogen removal
+        config_remove = ParserConfig(remove_hs=True)
+        parser_remove = SMILESParser(config_remove)
+        
+        # Test with hydrogen addition
+        config_add = ParserConfig(remove_hs=False)
+        parser_add = SMILESParser(config_add)
+        
+        # SMILES with explicit hydrogens
+        smiles_with_h = "[H]C([H])([H])C([H])([H])O[H]"
+        
+        mol_remove = parser_remove.parse(smiles_with_h)
+        mol_add = parser_add.parse(smiles_with_h)
+        
+        assert mol_remove is not None
+        assert mol_add is not None
+        
+        # The version with hydrogen removal should have fewer atoms
+        assert mol_add.GetNumAtoms() >= mol_remove.GetNumAtoms()

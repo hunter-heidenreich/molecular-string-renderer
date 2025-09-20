@@ -7,6 +7,7 @@ from pathlib import Path
 from rdkit import Chem
 import tempfile
 import os
+from unittest.mock import patch
 
 from molecular_string_renderer.config import ParserConfig
 from molecular_string_renderer.parsers.mol import MOLFileParser
@@ -347,3 +348,97 @@ M  END
         mol = parser.parse(mol_block)
         assert mol is not None
         assert isinstance(mol, Chem.Mol)
+
+
+class TestMOLFileEdgeCases:
+    """Test MOL file parser edge cases."""
+    
+    def test_path_detection_edge_case(self):
+        """Test MOL parser path detection logic for string validation."""
+        parser = MOLFileParser()
+        
+        # Create a string that looks like a path but doesn't exist
+        # This should trigger the path detection logic but not find a file
+        fake_path = "/tmp/nonexistent_file_12345.mol"
+        
+        # This should be treated as MOL content (not a path) since the file doesn't exist
+        with pytest.raises(ValueError, match="Failed to parse MOL data"):
+            parser.parse(fake_path)
+    
+    def test_mol_parser_with_sdf_content(self):
+        """Test MOL parser with SDF-like content."""
+        parser = MOLFileParser()
+        
+        # SDF content (multiple molecules)
+        sdf_content = """
+  Mrv2311 12092414142D          
+
+  1  0  0  0  0  0            999 V2000
+    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+M  END
+$$$$
+  Mrv2311 12092414142D          
+
+  1  0  0  0  0  0            999 V2000
+    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+M  END
+$$$$
+"""
+        
+        # Should still parse the first molecule
+        mol = parser.parse(sdf_content)
+        assert mol is not None
+        assert mol.GetNumAtoms() == 1
+    
+    def test_mol_parser_path_vs_content_disambiguation(self):
+        """Test MOL parser correctly distinguishes between paths and content."""
+        parser = MOLFileParser()
+        
+        # Create a temporary file with MOL content
+        mol_content = """
+  Mrv2311 12092414142D          
+
+  1  0  0  0  0  0            999 V2000
+    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+M  END
+"""
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.mol', delete=False) as f:
+            f.write(mol_content)
+            temp_path = f.name
+        
+        try:
+            # Test that it correctly identifies and loads the file
+            mol_from_path = parser.parse(temp_path)
+            assert mol_from_path is not None
+            
+            # Test that it correctly parses the same content as string
+            mol_from_content = parser.parse(mol_content)
+            assert mol_from_content is not None
+            
+            # Both should represent the same molecule
+            assert mol_from_path.GetNumAtoms() == mol_from_content.GetNumAtoms()
+            
+        finally:
+            Path(temp_path).unlink()  # Clean up
+    
+    def test_validation_file_read_exception(self):
+        """Test MOL validation when file reading fails."""
+        parser = MOLFileParser()
+        
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.mol', delete=False) as f:
+            f.write("temp content")
+            temp_path = f.name
+        
+        try:
+            # Mock Path.read_text to raise an exception
+            with patch('pathlib.Path.read_text') as mock_read:
+                mock_read.side_effect = IOError("Cannot read file")
+                
+                # Should return False instead of raising
+                result = parser.validate(Path(temp_path))
+                assert result is False
+                
+        finally:
+            Path(temp_path).unlink()  # Clean up

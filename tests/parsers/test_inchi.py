@@ -4,6 +4,7 @@ Tests for the InChI parser implementation.
 
 import pytest
 from rdkit import Chem
+from unittest.mock import patch
 
 from molecular_string_renderer.config import ParserConfig
 from molecular_string_renderer.parsers.inchi import InChIParser
@@ -240,3 +241,30 @@ class TestInChIPostProcessing:
         
         error_message = str(exc_info.value)
         assert invalid_inchi in error_message
+
+
+class TestInChIExceptionHandling:
+    """Test InChI parser exception handling edge cases."""
+    
+    def test_rdkit_exception_reraising(self):
+        """Test that RDKit exceptions are properly re-raised."""
+        parser = InChIParser()
+        
+        # Mock Chem.MolFromInchi to raise an exception with "Invalid InChI" message
+        with patch('molecular_string_renderer.parsers.inchi.Chem.MolFromInchi') as mock_mol_from_inchi:
+            mock_mol_from_inchi.side_effect = ValueError("Invalid InChI: test error")
+            
+            with pytest.raises(ValueError, match="Invalid InChI: test error"):
+                parser.parse("InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3")
+    
+    def test_validation_exception_handling(self):
+        """Test InChI validation with exception conditions.""" 
+        parser = InChIParser()
+        
+        # Mock MolFromInchi to raise an exception during validation
+        with patch('molecular_string_renderer.parsers.inchi.Chem.MolFromInchi') as mock_mol_from_inchi:
+            mock_mol_from_inchi.side_effect = RuntimeError("Validation exception")
+            
+            # Should return False instead of raising
+            result = parser.validate("InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3")
+            assert result is False
