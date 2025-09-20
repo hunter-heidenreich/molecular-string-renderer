@@ -28,7 +28,7 @@ Mol = Chem.Mol
 class SVGOutput(VectorOutputHandler):
     """SVG output handler with configurable generation strategy."""
 
-    def __init__(self, config: OutputConfig | None = None):
+    def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize SVG output handler.
         
         Args:
@@ -68,7 +68,7 @@ class SVGOutput(VectorOutputHandler):
 class PDFOutput(VectorOutputHandler):
     """PDF output handler using ReportLab."""
 
-    def __init__(self, config: OutputConfig | None = None):
+    def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize PDF output handler.
         
         Args:
@@ -110,7 +110,6 @@ class PDFOutput(VectorOutputHandler):
         with BytesIO() as buffer:
             c = canvas.Canvas(buffer, pagesize=letter)
 
-            # Get page dimensions
             page_width, page_height = letter
 
             margin = 0.5 * inch

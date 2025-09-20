@@ -9,6 +9,7 @@ from typing import Any
 
 from PIL import Image
 
+from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs.base import RasterOutputHandler
 from molecular_string_renderer.outputs.utils import ImageModeUtils
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 class PNGOutput(RasterOutputHandler):
     """PNG output handler."""
 
-    def __init__(self, config=None):
+    def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize PNG output handler."""
         super().__init__("png", config)
 
@@ -26,7 +27,7 @@ class PNGOutput(RasterOutputHandler):
 class JPEGOutput(RasterOutputHandler):
     """JPEG output handler."""
 
-    def __init__(self, config=None):
+    def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize JPEG output handler."""
         super().__init__("jpeg", config)
 
@@ -38,7 +39,7 @@ class JPEGOutput(RasterOutputHandler):
 class WEBPOutput(RasterOutputHandler):
     """WEBP output handler."""
 
-    def __init__(self, config=None):
+    def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize WEBP output handler."""
         super().__init__("webp", config)
 
@@ -46,13 +47,12 @@ class WEBPOutput(RasterOutputHandler):
 class TIFFOutput(RasterOutputHandler):
     """TIFF output handler."""
 
-    def __init__(self, config=None):
+    def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize TIFF output handler."""
         super().__init__("tiff", config)
 
     def _prepare_image(self, image: Image.Image) -> Image.Image:
         """Prepare image for TIFF saving (preserve transparency for TIFF)."""
-        # TIFF supports RGBA, so preserve transparency unlike other formats
         return image
 
     def _get_save_kwargs(self) -> dict[str, Any]:
@@ -61,7 +61,6 @@ class TIFFOutput(RasterOutputHandler):
 
         if self.config.optimize:
             kwargs["compression"] = "tiff_lzw"
-        # Note: Quality only supported with JPEG compression in TIFF
 
         return kwargs
 
@@ -69,7 +68,7 @@ class TIFFOutput(RasterOutputHandler):
 class BMPOutput(RasterOutputHandler):
     """BMP output handler."""
 
-    def __init__(self, config=None):
+    def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize BMP output handler."""
         super().__init__("bmp", config)
 

@@ -148,7 +148,6 @@ class ImageModeUtils:
         if image.mode not in ("RGBA", "LA"):
             return False
 
-        # Quick check by examining alpha channel
         alpha = image.split()[-1]
         return alpha.getextrema()[0] < _ALPHA_FULLY_OPAQUE
 
@@ -192,6 +191,12 @@ class ImageModeUtils:
         return image
 
     @staticmethod
+    def _convert_to_rgb_with_warning(image: Image.Image, format_name: str) -> Image.Image:
+        """Convert image to RGB with appropriate warning."""
+        logger.warning(f"Converting image mode '{image.mode}' to RGB for {format_name}")
+        return image.convert("RGB")
+
+    @staticmethod
     def ensure_jpeg_compatible(image: Image.Image) -> Image.Image:
         """Ensure image is compatible with JPEG format.
 
@@ -201,18 +206,12 @@ class ImageModeUtils:
         Returns:
             JPEG-compatible image
         """
-        # JPEG supports: L (grayscale), RGB, and CMYK modes
         if image.mode in ("RGB", "L", "CMYK"):
             return image
-        elif image.mode in ("RGBA", "LA", "PA"):
-            return image.convert("RGB")
-        elif image.mode in ("P", "1"):
+        elif image.mode in ("RGBA", "LA", "PA", "P", "1"):
             return image.convert("RGB")
         else:
-            logger.warning(
-                f"Converting unusual image mode '{image.mode}' to RGB for JPEG"
-            )
-            return image.convert("RGB")
+            return ImageModeUtils._convert_to_rgb_with_warning(image, "JPEG")
 
     @staticmethod
     def ensure_bmp_compatible(image: Image.Image) -> Image.Image:
@@ -224,15 +223,12 @@ class ImageModeUtils:
         Returns:
             BMP-compatible image
         """
-        # BMP supports: 1, L, P, RGB modes
-        # BMP can handle RGBA but alpha channel is ignored/flattened
         if image.mode in ("1", "L", "P", "RGB", "RGBA"):
             return image
         elif image.mode == "LA":
             return image.convert("RGB")
         else:
-            logger.warning(f"Converting image mode '{image.mode}' to RGB for BMP")
-            return image.convert("RGB")
+            return ImageModeUtils._convert_to_rgb_with_warning(image, "BMP")
 
 
 def create_safe_filename(molecular_string: str, extension: str = ".png") -> str:

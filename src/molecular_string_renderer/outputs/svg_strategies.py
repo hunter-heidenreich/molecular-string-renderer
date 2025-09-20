@@ -41,7 +41,7 @@ class SVGGenerationStrategy(ABC):
 class VectorSVGStrategy(SVGGenerationStrategy):
     """Strategy for generating true vector SVG using RDKit."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize vector SVG strategy."""
         self._molecule = None
 
@@ -144,7 +144,7 @@ class RasterSVGStrategy(SVGGenerationStrategy):
 class HybridSVGStrategy(SVGGenerationStrategy):
     """Strategy that attempts vector SVG first, then falls back to raster."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize hybrid SVG strategy."""
         self._vector_strategy = VectorSVGStrategy()
         self._raster_strategy = RasterSVGStrategy()

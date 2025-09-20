@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class OutputHandler(ABC):
     """Abstract base class for output handlers."""
 
-    def __init__(self, config: OutputConfig | None = None):
+    def __init__(self, config: OutputConfig | None = None) -> None:
         """Initialize output handler with configuration."""
         self.config = config or OutputConfig()
 
@@ -92,7 +92,7 @@ class OutputHandler(ABC):
 class RegistryBasedOutputHandler(OutputHandler):
     """Base class for output handlers that use the format registry."""
 
-    def __init__(self, format_key: str, config: OutputConfig | None = None):
+    def __init__(self, format_key: str, config: OutputConfig | None = None) -> None:
         """Initialize with format key for registry lookup."""
         super().__init__(config)
         self._format_info = FormatRegistry.get_format_info(format_key)
@@ -126,7 +126,7 @@ class RegistryBasedOutputHandler(OutputHandler):
 class RasterOutputHandler(RegistryBasedOutputHandler):
     """Base class for raster image output handlers."""
 
-    def __init__(self, format_key: str, config: OutputConfig | None = None):
+    def __init__(self, format_key: str, config: OutputConfig | None = None) -> None:
         """Initialize raster output handler."""
         super().__init__(format_key, config)
 
@@ -184,7 +184,7 @@ class RasterOutputHandler(RegistryBasedOutputHandler):
 class VectorOutputHandler(RegistryBasedOutputHandler):
     """Base class for vector/document output handlers."""
 
-    def __init__(self, format_key: str, config: OutputConfig | None = None):
+    def __init__(self, format_key: str, config: OutputConfig | None = None) -> None:
         """Initialize vector output handler."""
         super().__init__(format_key, config)
 
