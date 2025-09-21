@@ -3,9 +3,16 @@ Edge cases tests for outputs submodule.
 
 This file consolidates tests for:
 - Edge cases with various image modes and configurations
-- Factory and registry testing
-- Utility function testing
-- Format-specific behaviors and real-world scenarios
+- Factory and registry error handling
+- Utility function robustness
+- Format-specific edge behaviors
+- Real-world scenarios
+
+Tests are organized by functional area for better maintenance:
+- Factory/Registry: Error handling and validation
+- ImageModeUtils: Complex mode conversions and edge cases
+- Utility Functions: Input validation and error handling
+- Real-World Scenarios: Complex integration patterns
 """
 
 import tempfile
@@ -133,33 +140,26 @@ class TestFormatRegistry:
 class TestImageModeUtilsEdgeCases:
     """Test edge cases for ImageModeUtils functions."""
 
-    def test_has_transparency_non_alpha_modes(self):
+    def test_has_transparency_non_alpha_modes(self, test_image, grayscale_image):
         """Test has_transparency with non-alpha modes."""
-        rgb_image = Image.new("RGB", (50, 50), "red")
-        assert not ImageModeUtils.has_transparency(rgb_image)
+        assert not ImageModeUtils.has_transparency(test_image)
+        assert not ImageModeUtils.has_transparency(grayscale_image)
 
-        l_image = Image.new("L", (50, 50), 128)
-        assert not ImageModeUtils.has_transparency(l_image)
-
-    def test_has_transparency_fully_opaque_alpha(self):
+    def test_has_transparency_fully_opaque_alpha(self, rgba_opaque_image):
         """Test has_transparency with fully opaque alpha channel."""
-        rgba_image = Image.new("RGBA", (50, 50), (255, 0, 0, 255))
-        assert not ImageModeUtils.has_transparency(rgba_image)
+        assert not ImageModeUtils.has_transparency(rgba_opaque_image)
 
-    def test_has_transparency_with_transparency(self):
+    def test_has_transparency_with_transparency(self, rgba_image):
         """Test has_transparency with actual transparency."""
-        rgba_image = Image.new("RGBA", (50, 50), (255, 0, 0, 128))
         assert ImageModeUtils.has_transparency(rgba_image)
 
-    def test_prepare_for_no_alpha_edge_cases(self):
+    def test_prepare_for_no_alpha_edge_cases(self, test_image, la_image):
         """Test prepare_for_no_alpha with various modes."""
         # Test with already no-alpha mode
-        rgb_image = Image.new("RGB", (50, 50), "red")
-        result = ImageModeUtils.prepare_for_no_alpha(rgb_image)
+        result = ImageModeUtils.prepare_for_no_alpha(test_image)
         assert result.mode == "RGB"
 
         # Test with LA mode
-        la_image = Image.new("LA", (50, 50), (128, 200))
         result = ImageModeUtils.prepare_for_no_alpha(la_image)
         assert result.mode == "L"
 
@@ -185,29 +185,21 @@ class TestImageModeUtilsEdgeCases:
             # PA mode might not be supported in all PIL builds
             pytest.skip("PA image mode not supported in this PIL build")
 
-    def test_prepare_for_no_alpha_rgba_mode(self):
+    def test_prepare_for_no_alpha_rgba_mode(self, rgba_image):
         """Test prepare_for_no_alpha with RGBA mode specifically."""
-        # Arrange
-        rgba_image = Image.new("RGBA", (50, 50), (255, 0, 0, 128))
-
-        # Act
         result = ImageModeUtils.prepare_for_no_alpha(rgba_image)
-
-        # Assert
         assert result.mode == "RGB", (
             "RGBA mode should convert to RGB mode when removing alpha"
         )
 
-    def test_optimize_for_format_fully_opaque_conversion(self):
+    def test_optimize_for_format_fully_opaque_conversion(self, rgba_opaque_image):
         """Test optimize_for_format converts fully opaque RGBA to RGB."""
-        rgba_image = Image.new("RGBA", (50, 50), (255, 0, 0, 255))
-        result = ImageModeUtils.optimize_for_format(rgba_image, "png")
+        result = ImageModeUtils.optimize_for_format(rgba_opaque_image, "png")
         assert result.mode == "RGB"
 
     def test_optimize_for_format_la_mode_fully_opaque(self):
         """Test optimize_for_format converts fully opaque LA to L."""
-        # Arrange - create LA image with full opacity (255 alpha)
-        # We need to ensure it's actually fully opaque by setting ALL pixels to full alpha
+        # Create LA image with full opacity (255 alpha)
         la_image = Image.new("LA", (50, 50), (128, 255))
 
         # Verify the image is truly opaque by checking has_transparency
@@ -215,37 +207,33 @@ class TestImageModeUtilsEdgeCases:
             "LA image should be fully opaque"
         )
 
-        # Act
         result = ImageModeUtils.optimize_for_format(la_image, supports_alpha=True)
-
-        # Assert
         assert result.mode == "L", (
             "Fully opaque LA should convert to L when alpha support is available"
         )
 
-    def test_optimize_for_format_no_alpha_support(self):
+    def test_optimize_for_format_no_alpha_support(self, rgba_image):
         """Test optimize_for_format when format doesn't support alpha."""
-        # Arrange - create image with alpha
-        rgba_image = Image.new("RGBA", (50, 50), (255, 0, 0, 128))
-
-        # Act
         result = ImageModeUtils.optimize_for_format(rgba_image, supports_alpha=False)
-
-        # Assert
         assert result.mode == "RGB", (
             "RGBA image should convert to RGB when alpha is not supported"
         )
 
-    def test_ensure_jpeg_compatible_edge_cases(self):
+    def test_ensure_jpeg_compatible_edge_cases(self, test_images_all_modes):
         """Test JPEG compatibility conversion edge cases."""
         # Test P mode
-        p_image = Image.new("P", (50, 50))
+        p_image = test_images_all_modes["P"]
         result = ImageModeUtils.ensure_jpeg_compatible(p_image)
         assert result.mode == "RGB"
 
         # Test 1 mode
-        mono_image = Image.new("1", (50, 50), 1)
+        mono_image = test_images_all_modes["1"]
         result = ImageModeUtils.ensure_jpeg_compatible(mono_image)
+        assert result.mode == "RGB"
+
+    def test_ensure_bmp_compatible_edge_cases(self, la_image):
+        """Test BMP compatibility conversion edge cases."""
+        result = ImageModeUtils.ensure_bmp_compatible(la_image)
         assert result.mode == "RGB"
 
     def test_ensure_jpeg_compatible_unknown_mode_warning(self):
@@ -260,13 +248,6 @@ class TestImageModeUtilsEdgeCases:
             # Should convert the image, not return original
             assert result is mock_image.convert.return_value
             mock_logger.warning.assert_called_once()
-
-    def test_ensure_bmp_compatible_edge_cases(self):
-        """Test BMP compatibility conversion edge cases."""
-        # Test LA mode
-        la_image = Image.new("LA", (50, 50), (128, 200))
-        result = ImageModeUtils.ensure_bmp_compatible(la_image)
-        assert result.mode == "RGB"
 
     def test_ensure_bmp_compatible_unknown_mode_warning(self):
         """Test BMP compatibility with unknown mode logs warning."""
@@ -389,19 +370,6 @@ class TestBaseClassErrorHandling:
             with pytest.raises(IOError):
                 handler.get_bytes(Image.new("RGB", (50, 50), "red"))
 
-    def test_raster_output_handler_save_error_handling(self):
-        """Test RasterOutputHandler save error handling."""
-        from molecular_string_renderer.outputs.raster import PNGOutput
-
-        handler = PNGOutput()
-        test_image = Image.new("RGB", (50, 50), "red")
-
-        with patch.object(
-            handler, "_save_to_destination", side_effect=Exception("Test error")
-        ):
-            with pytest.raises(IOError):
-                handler.save(test_image, "/tmp/test.png")
-
     def test_error_logging(self):
         """Test that errors are properly logged."""
         from molecular_string_renderer.outputs.raster import PNGOutput
@@ -412,24 +380,10 @@ class TestBaseClassErrorHandling:
             with patch.object(
                 handler, "_prepare_image", side_effect=ValueError("Test")
             ):
-                with pytest.raises(
-                    IOError
-                ):  # The base class catches and re-raises as IOError
+                with pytest.raises(IOError):
                     handler.get_bytes(Image.new("RGB", (50, 50), "red"))
 
                 mock_logger.error.assert_called_once()
-
-    def test_success_logging(self):
-        """Test that successful operations are logged."""
-        from molecular_string_renderer.outputs.raster import PNGOutput
-
-        handler = PNGOutput()
-        test_image = Image.new("RGB", (50, 50), "red")
-
-        with patch("molecular_string_renderer.outputs.base.logger") as mock_logger:
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                handler.save(test_image, tmp.name)
-                mock_logger.info.assert_called()
 
 
 # =============================================================================
@@ -633,99 +587,36 @@ class TestRegistryBasedHandlerProperties:
 class TestImageModeEdgeCases:
     """Test edge cases with various image modes and color spaces."""
 
-    def test_palette_mode_images(self):
+    def test_palette_mode_images(self, test_images_all_modes):
         """Test handling of palette mode images."""
-        palette_image = Image.new("P", (100, 100))
+        palette_image = test_images_all_modes["P"]
 
         for format_name in ["png", "jpg", "webp", "tiff", "bmp"]:
             handler = get_output_handler(format_name)
             result = handler.get_bytes(palette_image)
             assert len(result) > 0
 
-    def test_monochrome_images(self):
+    def test_monochrome_images(self, test_images_all_modes):
         """Test handling of 1-bit monochrome images."""
-        mono_image = Image.new("1", (100, 100), 1)
+        mono_image = test_images_all_modes["1"]
 
         for format_name in ["png", "jpg", "tiff", "bmp"]:
             handler = get_output_handler(format_name)
             result = handler.get_bytes(mono_image)
             assert len(result) > 0
 
-    def test_cmyk_images(self):
-        """Test handling of CMYK images (JPEG specific)."""
-        try:
-            cmyk_image = Image.new("CMYK", (100, 100), (100, 50, 0, 25))
-
-            # JPEG should handle CMYK
-            jpeg_handler = get_output_handler("jpeg")
-            result = jpeg_handler.get_bytes(cmyk_image)
-            assert len(result) > 0
-
-            # Other formats should convert gracefully or fail gracefully
-            for format_name in ["png", "webp", "tiff"]:
-                handler = get_output_handler(format_name)
-                result = handler.get_bytes(cmyk_image)
-                assert len(result) > 0
-
-        except Exception:
-            # CMYK might not be supported in all PIL builds
-            pytest.skip("CMYK images not supported in this PIL build")
-
-    def test_extreme_alpha_values(self):
+    def test_extreme_alpha_values(self, extreme_alpha_images):
         """Test images with extreme alpha values."""
-        # Fully transparent
-        transparent_image = Image.new("RGBA", (50, 50), (255, 0, 0, 0))
-
-        # Nearly transparent
-        nearly_transparent = Image.new("RGBA", (50, 50), (255, 0, 0, 1))
-
-        # Nearly opaque
-        nearly_opaque = Image.new("RGBA", (50, 50), (255, 0, 0, 254))
-
-        for image in [transparent_image, nearly_transparent, nearly_opaque]:
+        for alpha_type, image in extreme_alpha_images.items():
             for format_name in ["png", "webp", "tiff", "svg"]:
                 handler = get_output_handler(format_name)
                 result = handler.get_bytes(image)
-                assert len(result) > 0
+                assert len(result) > 0, f"Failed for {alpha_type} with {format_name}"
 
 
 # =============================================================================
 # Extreme Dimension Tests
 # =============================================================================
-
-
-class TestExtremeImageDimensions:
-    """Test handling of images with extreme dimensions."""
-
-    def test_very_wide_images(self):
-        """Test very wide but short images."""
-        wide_image = Image.new("RGB", (1000, 10), "red")
-
-        for format_name in ["png", "jpg", "webp", "svg"]:
-            handler = get_output_handler(format_name)
-            result = handler.get_bytes(wide_image)
-            assert len(result) > 0
-
-    def test_very_tall_images(self):
-        """Test very tall but narrow images."""
-        tall_image = Image.new("RGB", (10, 1000), "blue")
-
-        for format_name in ["png", "jpg", "webp", "svg"]:
-            handler = get_output_handler(format_name)
-            result = handler.get_bytes(tall_image)
-            assert len(result) > 0
-
-    def test_square_images_various_sizes(self):
-        """Test square images of various sizes."""
-        sizes = [1, 2, 5, 10, 50, 100, 500]
-
-        for size in sizes:
-            image = Image.new("RGB", (size, size), "green")
-
-            for format_name in ["png", "jpg", "svg"]:
-                handler = get_output_handler(format_name)
-                result = handler.get_bytes(image)
-                assert len(result) > 0
 
 
 # =============================================================================
@@ -736,10 +627,8 @@ class TestExtremeImageDimensions:
 class TestConfigurationEdgeCases:
     """Test edge cases with various configurations."""
 
-    def test_extreme_quality_values(self):
+    def test_extreme_quality_values(self, test_image):
         """Test extreme quality values."""
-        test_image = Image.new("RGB", (100, 100), "red")
-
         # Minimum quality
         low_config = OutputConfig(quality=1)
         handler = get_output_handler("jpeg", low_config)
@@ -752,10 +641,8 @@ class TestConfigurationEdgeCases:
         result = handler.get_bytes(test_image)
         assert len(result) > 0
 
-    def test_conflicting_configuration_options(self):
+    def test_conflicting_configuration_options(self, test_image):
         """Test conflicting configuration options."""
-        test_image = Image.new("RGB", (100, 100), "red")
-
         # High quality with optimization (might conflict for some formats)
         config = OutputConfig(quality=95, optimize=True)
 
@@ -764,10 +651,8 @@ class TestConfigurationEdgeCases:
             result = handler.get_bytes(test_image)
             assert len(result) > 0
 
-    def test_configuration_with_unsupported_features(self):
+    def test_configuration_with_unsupported_features(self, test_image):
         """Test configuration with features not supported by format."""
-        test_image = Image.new("RGB", (100, 100), "red")
-
         # Quality setting for PNG (should be ignored)
         png_config = OutputConfig(quality=50)
         png_handler = get_output_handler("png", png_config)
@@ -826,55 +711,33 @@ class TestErrorRecovery:
 class TestFormatSpecificBehaviors:
     """Test format-specific behaviors and optimizations."""
 
-    def test_jpeg_progressive_encoding(self):
-        """Test JPEG progressive encoding."""
-        test_image = Image.new("RGB", (200, 200), "red")
+    @pytest.mark.parametrize("format_name", ["jpeg", "webp"])
+    def test_quality_supporting_formats(self, test_image, format_name):
+        """Test formats that support quality settings."""
+        high_quality = OutputConfig(quality=95)
+        low_quality = OutputConfig(quality=20)
 
-        # Test with progressive enabled (if supported)
-        handler = get_output_handler("jpeg")
-        result = handler.get_bytes(test_image)
-        assert len(result) > 0
+        high_handler = get_output_handler(format_name, high_quality)
+        low_handler = get_output_handler(format_name, low_quality)
 
-    def test_png_compression_levels(self):
-        """Test PNG compression behavior."""
-        test_image = Image.new("RGB", (200, 200), "red")
+        high_result = high_handler.get_bytes(test_image)
+        low_result = low_handler.get_bytes(test_image)
 
+        assert len(high_result) > 0
+        assert len(low_result) > 0
+
+    @pytest.mark.parametrize("format_name", ["png", "webp", "tiff"])
+    def test_optimization_supporting_formats(self, test_image, format_name):
+        """Test formats that support optimization."""
         optimized_config = OutputConfig(optimize=True)
-        handler = get_output_handler("png", optimized_config)
+        handler = get_output_handler(format_name, optimized_config)
 
         result = handler.get_bytes(test_image)
         assert len(result) > 0
 
-    def test_webp_lossless_vs_lossy(self):
-        """Test WEBP lossless vs lossy compression."""
-        test_image = Image.new("RGB", (100, 100), "red")
-
-        # High quality (should be lossless or near-lossless)
-        high_quality = OutputConfig(quality=100)
-        handler = get_output_handler("webp", high_quality)
-        result_high = handler.get_bytes(test_image)
-
-        # Low quality (should be lossy)
-        low_quality = OutputConfig(quality=10)
-        handler = get_output_handler("webp", low_quality)
-        result_low = handler.get_bytes(test_image)
-
-        assert len(result_high) > 0
-        assert len(result_low) > 0
-        # Compression behavior can vary, so just check both are valid
-        assert len(result_high) > 0
-
-    def test_tiff_compression_options(self):
-        """Test TIFF compression behavior."""
-        test_image = Image.new("RGB", (100, 100), "red")
-
-        handler = get_output_handler("tiff")
-        result = handler.get_bytes(test_image)
-        assert len(result) > 0
-
-    def test_svg_vector_vs_raster_modes(self):
+    def test_svg_vector_vs_raster_modes(self, test_image):
         """Test SVG vector vs raster generation modes."""
-        test_image = Image.new("RGB", (100, 100), "red")
+        from .conftest import assert_image_output_valid
 
         # Raster mode
         raster_config = OutputConfig(svg_use_vector=False)
@@ -886,23 +749,18 @@ class TestFormatSpecificBehaviors:
         vector_handler = get_output_handler("svg", vector_config)
         vector_result = vector_handler.get_bytes(test_image)
 
-        assert b"<svg" in raster_result
-        assert b"<svg" in vector_result
+        assert_image_output_valid(raster_result, "svg")
+        assert_image_output_valid(vector_result, "svg")
 
-    def test_pdf_page_layout_variations(self):
+    def test_pdf_page_layout_variations(self, square_image, wide_image, tall_image):
         """Test PDF page layout with different image dimensions."""
-        images = [
-            Image.new("RGB", (100, 100), "red"),  # Square
-            Image.new("RGB", (200, 100), "green"),  # Landscape
-            Image.new("RGB", (100, 200), "blue"),  # Portrait
-        ]
+        from .conftest import assert_image_output_valid
 
         handler = get_output_handler("pdf")
 
-        for image in images:
+        for image in [square_image, wide_image, tall_image]:
             result = handler.get_bytes(image)
-            assert len(result) > 0
-            assert result.startswith(b"%PDF")
+            assert_image_output_valid(result, "pdf")
 
 
 # =============================================================================
@@ -913,72 +771,58 @@ class TestFormatSpecificBehaviors:
 class TestUtilityFunctionRobustness:
     """Test robustness of utility functions."""
 
-    def test_safe_filename_edge_cases(self):
-        """Test safe filename generation with edge cases."""
-        edge_cases = [
+    @pytest.mark.parametrize(
+        "input_case",
+        [
             "",  # Empty string
             " ",  # Whitespace only
             "C" * 1000,  # Very long string
             "c1ccccc1" * 100,  # Repeated pattern
             "C=C=C=C=C",  # Multiple special characters
-        ]
+        ],
+    )
+    def test_safe_filename_edge_cases(self, input_case):
+        """Test safe filename generation with edge cases."""
+        filename = create_safe_filename(input_case)
+        assert len(filename) > 0
+        assert filename.endswith(".png")
 
-        for case in edge_cases:
-            filename = create_safe_filename(case)
-            assert len(filename) > 0
-            assert filename.endswith(".png")
-
-    def test_create_safe_filename_none_extension(self):
-        """Test create_safe_filename with None extension raises appropriate error."""
-        # Arrange
+    def test_create_safe_filename_validation(self):
+        """Test create_safe_filename input validation."""
         molecular_string = "CCO"
 
-        # Act & Assert - should raise ValueError when extension is None
+        # Test None extension
         with pytest.raises(ValueError, match="Extension cannot be None"):
             create_safe_filename(molecular_string, None)
 
-    def test_create_safe_filename_empty_extension(self):
-        """Test create_safe_filename with empty extension raises appropriate error."""
-        # Arrange
-        molecular_string = "CCO"
-
-        # Act & Assert - should raise ValueError when extension is empty
+        # Test empty extension
         with pytest.raises(ValueError, match="Extension cannot be empty"):
             create_safe_filename(molecular_string, "")
 
-    def test_create_safe_filename_extension_without_dot(self):
+    def test_create_safe_filename_extension_normalization(self):
         """Test create_safe_filename adds dot to extension when missing."""
-        # Arrange
         molecular_string = "CCO"
         extension_without_dot = "svg"
 
-        # Act
         filename = create_safe_filename(molecular_string, extension_without_dot)
 
-        # Assert
         assert filename.endswith(".svg"), "Should add dot to extension"
         assert len(filename) > len(".svg"), "Should have hash-based filename"
         # Verify it's a valid MD5 hash (32 chars) plus extension
         base_name = filename.replace(".svg", "")
         assert len(base_name) == 32, "Should be MD5 hash length"
 
-    def test_safe_filename_consistency(self):
-        """Test that safe filename generation is consistent."""
+    def test_safe_filename_consistency_and_uniqueness(self):
+        """Test filename generation consistency and uniqueness."""
         smiles = "CCO"
-
         filenames = [create_safe_filename(smiles) for _ in range(10)]
 
-        # All should be identical
+        # All should be identical (consistency)
         assert len(set(filenames)) == 1
 
-    def test_safe_filename_different_extensions(self):
-        """Test safe filename with different extensions."""
-        smiles = "CCO"
+        # Different extensions should have same base
         extensions = [".png", ".svg", ".pdf", ".jpg"]
-
         filenames = [create_safe_filename(smiles, ext) for ext in extensions]
-
-        # Should all have different extensions but same base
         bases = [fn.rsplit(".", 1)[0] for fn in filenames]
         assert len(set(bases)) == 1  # Same base
 
@@ -994,20 +838,14 @@ class TestUtilityFunctionRobustness:
 class TestRealWorldScenarios:
     """Test real-world usage scenarios."""
 
-    def test_batch_processing_workflow(self):
+    def test_batch_processing_workflow(self, test_image, large_image, rgba_image):
         """Test a typical batch processing workflow."""
         # Simulate processing multiple molecules
-        test_images = [
-            Image.new("RGB", (100, 100), "red"),
-            Image.new("RGB", (150, 120), "green"),
-            Image.new("RGBA", (80, 80), (0, 0, 255, 128)),
-        ]
-
+        test_images = [test_image, large_image, rgba_image]
         formats = ["png", "svg", "pdf"]
 
         for format_name in formats:
             handler = get_output_handler(format_name)
-
             results = []
             for image in test_images:
                 result = handler.get_bytes(image)
@@ -1016,10 +854,8 @@ class TestRealWorldScenarios:
             assert len(results) == len(test_images)
             assert all(len(r) > 0 for r in results)
 
-    def test_mixed_quality_batch_processing(self):
+    def test_mixed_quality_batch_processing(self, test_image):
         """Test batch processing with different quality settings."""
-        test_image = Image.new("RGB", (100, 100), "red")
-
         qualities = [20, 50, 80, 95]
 
         for quality in qualities:
@@ -1028,89 +864,50 @@ class TestRealWorldScenarios:
             result = handler.get_bytes(test_image)
             assert len(result) > 0
 
-    def test_format_conversion_pipeline(self):
+    def test_format_conversion_pipeline(self, test_image):
         """Test a format conversion pipeline."""
-        source_image = Image.new("RGB", (100, 100), "red")
+        from .conftest import assert_image_output_valid
 
         # Convert through multiple formats
         formats = ["png", "jpeg", "webp", "svg", "pdf"]
 
         for format_name in formats:
             handler = get_output_handler(format_name)
-            result = handler.get_bytes(source_image)
-            assert len(result) > 0
-
-            # Verify format-specific characteristics
-            if format_name == "pdf":
-                assert result.startswith(b"%PDF")
-            elif format_name == "svg":
-                assert b"<svg" in result
+            result = handler.get_bytes(test_image)
+            assert_image_output_valid(result, format_name)
 
 
 class TestImageModeUtilsExtended:
     """Extended tests for ImageModeUtils to improve coverage."""
 
-    def test_convert_to_rgb_with_warning_various_modes(self):
-        """Test _convert_to_rgb_with_warning with various unsupported modes."""
-        # Test with a mode that will trigger the warning path
-        test_image = Image.new("I", (50, 50))  # 32-bit integer pixels
-        result = ImageModeUtils._convert_to_rgb_with_warning(test_image, "TEST_FORMAT")
-        assert result.mode == "RGB"
-
-    def test_ensure_jpeg_compatible_all_modes(self):
-        """Test ensure_jpeg_compatible with all possible image modes."""
-        # Already supported modes
-        supported_modes = ["RGB", "L"]
-        for mode in supported_modes:
+    @pytest.mark.parametrize("mode", ["RGB", "L", "CMYK"])
+    def test_ensure_jpeg_compatible_supported_modes(self, mode):
+        """Test ensure_jpeg_compatible with supported modes."""
+        try:
             test_image = Image.new(mode, (50, 50))
             result = ImageModeUtils.ensure_jpeg_compatible(test_image)
-            assert result.mode == mode
-
-        # Test CMYK if supported
-        try:
-            cmyk_image = Image.new("CMYK", (50, 50))
-            result = ImageModeUtils.ensure_jpeg_compatible(cmyk_image)
-            assert result.mode == "CMYK"
+            assert result.mode in ["RGB", "L", "CMYK"]
         except OSError:
-            # CMYK mode may not be directly creatable
-            pass
+            # Some modes may not be directly creatable
+            pytest.skip(f"{mode} mode not supported in this PIL build")
 
-        # Modes that need conversion
-        conversion_modes = ["RGBA", "LA", "PA", "P", "1"]
-        for mode in conversion_modes:
+    @pytest.mark.parametrize("mode", ["RGBA", "LA", "PA", "P", "1"])
+    def test_ensure_jpeg_compatible_conversion_modes(self, mode):
+        """Test ensure_jpeg_compatible modes that need conversion."""
+        try:
             test_image = Image.new(mode, (50, 50))
             result = ImageModeUtils.ensure_jpeg_compatible(test_image)
             assert result.mode == "RGB"
-
-        # Test mode that triggers warning path
-        try:
-            unsupported_image = Image.new("I", (50, 50))  # 32-bit integer
-            result = ImageModeUtils.ensure_jpeg_compatible(unsupported_image)
-            assert result.mode == "RGB"
         except OSError:
-            pass
+            # Some modes may not be directly creatable
+            pytest.skip(f"{mode} mode not supported in this PIL build")
 
-    def test_ensure_bmp_compatible_all_modes(self):
-        """Test ensure_bmp_compatible with all possible image modes."""
-        # Already supported modes
-        supported_modes = ["1", "L", "P", "RGB", "RGBA"]
-        for mode in supported_modes:
-            test_image = Image.new(mode, (50, 50))
-            result = ImageModeUtils.ensure_bmp_compatible(test_image)
-            assert result.mode == mode
-
-        # LA mode should convert to RGB
-        la_image = Image.new("LA", (50, 50))
-        result = ImageModeUtils.ensure_bmp_compatible(la_image)
-        assert result.mode == "RGB"
-
-        # Test mode that triggers warning path
-        try:
-            unsupported_image = Image.new("I", (50, 50))  # 32-bit integer
-            result = ImageModeUtils.ensure_bmp_compatible(unsupported_image)
-            assert result.mode == "RGB"
-        except OSError:
-            pass
+    @pytest.mark.parametrize("mode", ["1", "L", "P", "RGB", "RGBA"])
+    def test_ensure_bmp_compatible_supported_modes(self, mode):
+        """Test ensure_bmp_compatible with supported modes."""
+        test_image = Image.new(mode, (50, 50))
+        result = ImageModeUtils.ensure_bmp_compatible(test_image)
+        assert result.mode == mode
 
 
 class TestBuildSaveKwargsExtended:

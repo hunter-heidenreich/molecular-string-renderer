@@ -154,18 +154,7 @@ class TestOutputHandlerBasicOperations:
 
 
 class TestOutputHandlerImageModeSupport:
-    """Test support for different image modes and conversions."""
-
-    @pytest.mark.parametrize("mode", ["RGB", "RGBA", "L", "LA"])
-    def test_image_mode_handling(self, output_handler, mode):
-        """Test that handlers can process different image modes."""
-        from .conftest import assert_valid_bytes_output, create_test_image_with_mode
-
-        test_image = create_test_image_with_mode(mode, (100, 100))
-        result = output_handler.get_bytes(test_image)
-        assert_valid_bytes_output(
-            result, f"{output_handler.format_name} with {mode} mode"
-        )
+    """Test basic image mode support - detailed mode testing is in test_image_handling.py."""
 
     def test_transparency_handling(self, output_handler, rgba_image):
         """Test handling of images with transparency."""
@@ -178,7 +167,7 @@ class TestOutputHandlerImageModeSupport:
 
 
 class TestOutputHandlerErrorHandling:
-    """Test error handling for various invalid inputs and edge cases."""
+    """Test comprehensive error handling for various invalid inputs and edge cases."""
 
     @pytest.mark.parametrize("invalid_input", [None, "not an image", 123, []])
     def test_invalid_image_inputs(self, output_handler, invalid_input):
@@ -202,6 +191,99 @@ class TestOutputHandlerErrorHandling:
             # Some handlers may still work with closed images
         except (ValueError, OSError):
             pass  # Expected for most formats
+
+    def test_save_invalid_path_raises_error(self, output_handler, test_image):
+        """Test that invalid save paths raise appropriate errors."""
+        invalid_path = "/root/nonexistent/test.png"
+
+        with pytest.raises((IOError, OSError, PermissionError)) as exc_info:
+            output_handler.save(test_image, invalid_path)
+
+        error_message = str(exc_info.value).lower()
+        assert any(
+            keyword in error_message
+            for keyword in [
+                "permission",
+                "access",
+                "denied",
+                "not found",
+                "no such",
+                "read-only",
+                "file system",
+            ]
+        ), f"Error message should indicate the nature of the problem: {exc_info.value}"
+
+    def test_save_with_none_image_raises_error(self, output_handler, temp_dir):
+        """Test that passing None as image raises appropriate error."""
+        output_path = temp_dir / f"test{output_handler.file_extension}"
+
+        with pytest.raises((IOError, OSError)) as exc_info:
+            output_handler.save(None, output_path)
+
+        error_message = str(exc_info.value).lower()
+        assert (
+            "failed to save" in error_message
+            and output_handler.format_name.lower() in error_message
+        ), f"Error should indicate save failure: {exc_info.value}"
+
+    def test_save_with_invalid_image_object_raises_error(
+        self, output_handler, temp_dir
+    ):
+        """Test that passing invalid image object raises appropriate error."""
+        output_path = temp_dir / f"test{output_handler.file_extension}"
+        invalid_image = "not an image"
+
+        with pytest.raises((IOError, OSError)) as exc_info:
+            output_handler.save(invalid_image, output_path)
+
+        error_message = str(exc_info.value).lower()
+        assert (
+            "failed to save" in error_message
+            and output_handler.format_name.lower() in error_message
+        ), f"Error should indicate save failure: {exc_info.value}"
+
+    def test_get_bytes_with_none_image_raises_error(self, output_handler):
+        """Test that get_bytes with None image raises appropriate error."""
+        with pytest.raises((IOError, OSError, AttributeError, TypeError)):
+            output_handler.get_bytes(None)
+
+    def test_save_readonly_directory_error(self, output_handler, test_image, temp_dir):
+        """Test saving to a read-only directory raises appropriate error."""
+        readonly_dir = temp_dir / "readonly"
+        readonly_dir.mkdir()
+
+        try:
+            readonly_dir.chmod(0o555)  # Make directory read-only
+            output_path = readonly_dir / f"test{output_handler.file_extension}"
+
+            with pytest.raises((IOError, OSError, PermissionError)) as exc_info:
+                output_handler.save(test_image, output_path)
+
+            error_message = str(exc_info.value).lower()
+            assert any(
+                keyword in error_message
+                for keyword in ["permission", "denied", "access"]
+            ), f"Error should indicate permission problem: {exc_info.value}"
+
+        finally:
+            try:
+                readonly_dir.chmod(0o755)  # Restore permissions for cleanup
+            except (OSError, PermissionError):
+                pass
+
+    def test_error_messages_are_informative(self, output_handler, test_image):
+        """Test that error messages provide useful debugging information."""
+        deeply_nested_invalid_path = (
+            "/root/very/deeply/nested/nonexistent/path/test.png"
+        )
+
+        with pytest.raises((IOError, OSError, PermissionError)) as exc_info:
+            output_handler.save(test_image, deeply_nested_invalid_path)
+
+        error_message = str(exc_info.value)
+        assert len(error_message) > 10, (
+            "Error message should be informative, not just a generic message"
+        )
 
 
 class TestOutputHandlerConfiguration:
