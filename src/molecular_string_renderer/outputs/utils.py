@@ -243,10 +243,19 @@ def create_safe_filename(molecular_string: str, extension: str = ".png") -> str:
 
     Returns:
         A safe filename with the specified extension
+
+    Raises:
+        ValueError: If extension is None or empty
     """
     clean_string = molecular_string.strip()
     hasher = hashlib.md5(clean_string.encode("utf-8"))
     base_name = hasher.hexdigest()
+
+    if extension is None:
+        raise ValueError("Extension cannot be None")
+
+    if not extension:
+        raise ValueError("Extension cannot be empty")
 
     if not extension.startswith("."):
         extension = f".{extension}"

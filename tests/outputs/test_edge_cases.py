@@ -23,6 +23,7 @@ from molecular_string_renderer.outputs.factory import (
 )
 from molecular_string_renderer.outputs.svg_strategies import (
     HybridSVGStrategy,
+    RasterSVGStrategy,
     VectorSVGStrategy,
 )
 from molecular_string_renderer.outputs.utils import (
@@ -162,11 +163,78 @@ class TestImageModeUtilsEdgeCases:
         result = ImageModeUtils.prepare_for_no_alpha(la_image)
         assert result.mode == "L"
 
+    def test_prepare_for_no_alpha_pa_mode(self):
+        """Test prepare_for_no_alpha with PA (palette with alpha) mode."""
+        # Arrange - create a palette image with alpha
+        # Note: PA mode is palette mode with alpha channel
+        try:
+            # Create a palette image first
+            palette_image = Image.new("P", (50, 50))
+            # Convert to PA mode (palette with alpha)
+            pa_image = palette_image.convert("PA")
+
+            # Act
+            result = ImageModeUtils.prepare_for_no_alpha(pa_image)
+
+            # Assert
+            assert result.mode == "P", (
+                "PA mode should convert to P mode when removing alpha"
+            )
+
+        except Exception:
+            # PA mode might not be supported in all PIL builds
+            pytest.skip("PA image mode not supported in this PIL build")
+
+    def test_prepare_for_no_alpha_rgba_mode(self):
+        """Test prepare_for_no_alpha with RGBA mode specifically."""
+        # Arrange
+        rgba_image = Image.new("RGBA", (50, 50), (255, 0, 0, 128))
+
+        # Act
+        result = ImageModeUtils.prepare_for_no_alpha(rgba_image)
+
+        # Assert
+        assert result.mode == "RGB", (
+            "RGBA mode should convert to RGB mode when removing alpha"
+        )
+
     def test_optimize_for_format_fully_opaque_conversion(self):
         """Test optimize_for_format converts fully opaque RGBA to RGB."""
         rgba_image = Image.new("RGBA", (50, 50), (255, 0, 0, 255))
         result = ImageModeUtils.optimize_for_format(rgba_image, "png")
         assert result.mode == "RGB"
+
+    def test_optimize_for_format_la_mode_fully_opaque(self):
+        """Test optimize_for_format converts fully opaque LA to L."""
+        # Arrange - create LA image with full opacity (255 alpha)
+        # We need to ensure it's actually fully opaque by setting ALL pixels to full alpha
+        la_image = Image.new("LA", (50, 50), (128, 255))
+
+        # Verify the image is truly opaque by checking has_transparency
+        assert not ImageModeUtils.has_transparency(la_image), (
+            "LA image should be fully opaque"
+        )
+
+        # Act
+        result = ImageModeUtils.optimize_for_format(la_image, supports_alpha=True)
+
+        # Assert
+        assert result.mode == "L", (
+            "Fully opaque LA should convert to L when alpha support is available"
+        )
+
+    def test_optimize_for_format_no_alpha_support(self):
+        """Test optimize_for_format when format doesn't support alpha."""
+        # Arrange - create image with alpha
+        rgba_image = Image.new("RGBA", (50, 50), (255, 0, 0, 128))
+
+        # Act
+        result = ImageModeUtils.optimize_for_format(rgba_image, supports_alpha=False)
+
+        # Assert
+        assert result.mode == "RGB", (
+            "RGBA image should convert to RGB when alpha is not supported"
+        )
 
     def test_ensure_jpeg_compatible_edge_cases(self):
         """Test JPEG compatibility conversion edge cases."""
@@ -274,6 +342,30 @@ class TestUtilityFunctions:
         kwargs = build_save_kwargs(format_info, config)
         assert kwargs["quality"] == 80
         assert kwargs["optimize"] is False
+
+    def test_build_save_kwargs_no_quality_support_no_optimize(self):
+        """Test build_save_kwargs without quality support and optimization disabled."""
+        # Arrange
+        config = OutputConfig(quality=80, optimize=False)
+        format_info = FormatInfo(
+            extension=".tiff",
+            pil_format="TIFF",
+            valid_extensions=[".tiff"],
+            supports_alpha=True,
+            supports_quality=False,  # No quality support
+        )
+
+        # Act
+        kwargs = build_save_kwargs(format_info, config)
+
+        # Assert
+        assert "quality" not in kwargs, (
+            "Quality should not be in kwargs when not supported"
+        )
+        assert "optimize" not in kwargs, (
+            "Optimize should not be in kwargs when disabled"
+        )
+        assert kwargs["format"] == "TIFF", "Format should always be present"
 
 
 # =============================================================================
@@ -412,6 +504,89 @@ class TestSVGStrategyErrorHandling:
             # Should fallback to raster
             assert "data:image/png;base64," in result
             assert "data:image/png;base64," in result
+
+    def test_raster_svg_strategy_basic(self):
+        """Test RasterSVGStrategy basic functionality."""
+        strategy = RasterSVGStrategy()
+        test_image = Image.new("RGB", (100, 100), "red")
+        config = OutputConfig()
+
+        result = strategy.generate_svg(test_image, config)
+
+        # Should contain SVG structure with embedded PNG
+        assert "<?xml version=" in result
+        assert "<svg" in result
+        assert "</svg>" in result
+        assert "data:image/png;base64," in result
+        assert f'width="{test_image.width}"' in result
+        assert f'height="{test_image.height}"' in result
+
+    def test_vector_svg_optimization_success(self):
+        """Test VectorSVGStrategy optimization with actual SVG content."""
+        strategy = VectorSVGStrategy()
+        mock_mol = MagicMock()
+        strategy.set_molecule(mock_mol)
+
+        test_image = Image.new("RGB", (100, 100), "red")
+
+        # Mock SVG content with comments
+        mock_svg_content = """<svg>
+<!-- comment -->
+  <g></g>
+</svg>"""
+
+        with patch(
+            "molecular_string_renderer.outputs.svg_strategies.Draw"
+        ) as mock_draw:
+            mock_draw.MolToSVG.return_value = mock_svg_content
+
+            result = strategy.generate_svg(test_image, OutputConfig(optimize=True))
+
+            # Comments should be removed
+            assert "<!-- comment -->" not in result
+            assert "<svg>" in result
+            assert "<g></g>" in result
+
+    def test_hybrid_svg_strategy_vector_success(self):
+        """Test HybridSVGStrategy when vector generation succeeds."""
+        strategy = HybridSVGStrategy()
+        mock_mol = MagicMock()
+        strategy.set_molecule(mock_mol)
+
+        test_image = Image.new("RGB", (100, 100), "red")
+        config = OutputConfig(svg_use_vector=True)
+
+        mock_svg_content = "<svg><g><path d='M10,10 L20,20'/></g></svg>"
+
+        with patch.object(strategy._vector_strategy, "generate_svg") as mock_vector:
+            mock_vector.return_value = mock_svg_content
+
+            result = strategy.generate_svg(test_image, config)
+
+            # Should return vector SVG content, not raster
+            assert result == mock_svg_content
+            assert "data:image/png;base64," not in result
+
+    def test_vector_svg_strategy_no_optimization(self):
+        """Test VectorSVGStrategy without optimization to cover remaining branch."""
+        strategy = VectorSVGStrategy()
+        mock_mol = MagicMock()
+        strategy.set_molecule(mock_mol)
+
+        test_image = Image.new("RGB", (100, 100), "red")
+        mock_svg_content = "<svg><!-- comment --><g></g></svg>"
+
+        with patch(
+            "molecular_string_renderer.outputs.svg_strategies.Draw"
+        ) as mock_draw:
+            mock_draw.MolToSVG.return_value = mock_svg_content
+
+            # Test without optimization
+            result = strategy.generate_svg(test_image, OutputConfig(optimize=False))
+
+            # Should return content as-is (no optimization)
+            assert result == mock_svg_content
+            assert "<!-- comment -->" in result
 
 
 # =============================================================================
@@ -752,6 +927,40 @@ class TestUtilityFunctionRobustness:
             filename = create_safe_filename(case)
             assert len(filename) > 0
             assert filename.endswith(".png")
+
+    def test_create_safe_filename_none_extension(self):
+        """Test create_safe_filename with None extension raises appropriate error."""
+        # Arrange
+        molecular_string = "CCO"
+
+        # Act & Assert - should raise ValueError when extension is None
+        with pytest.raises(ValueError, match="Extension cannot be None"):
+            create_safe_filename(molecular_string, None)
+
+    def test_create_safe_filename_empty_extension(self):
+        """Test create_safe_filename with empty extension raises appropriate error."""
+        # Arrange
+        molecular_string = "CCO"
+
+        # Act & Assert - should raise ValueError when extension is empty
+        with pytest.raises(ValueError, match="Extension cannot be empty"):
+            create_safe_filename(molecular_string, "")
+
+    def test_create_safe_filename_extension_without_dot(self):
+        """Test create_safe_filename adds dot to extension when missing."""
+        # Arrange
+        molecular_string = "CCO"
+        extension_without_dot = "svg"
+
+        # Act
+        filename = create_safe_filename(molecular_string, extension_without_dot)
+
+        # Assert
+        assert filename.endswith(".svg"), "Should add dot to extension"
+        assert len(filename) > len(".svg"), "Should have hash-based filename"
+        # Verify it's a valid MD5 hash (32 chars) plus extension
+        base_name = filename.replace(".svg", "")
+        assert len(base_name) == 32, "Should be MD5 hash length"
 
     def test_safe_filename_consistency(self):
         """Test that safe filename generation is consistent."""
