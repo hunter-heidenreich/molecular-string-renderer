@@ -490,7 +490,32 @@ def get_format_test_matrix():
 
 
 # =============================================================================
-# Test Helper Functions for Split Test Modules
+# Test Constants
+# =============================================================================
+
+# Size limits for various test scenarios
+MIN_FILE_SIZE = (
+    30  # Minimum expected file size in bytes (some formats can be very small)
+)
+MAX_REASONABLE_FILE_SIZE = (
+    15_000_000  # Maximum reasonable file size for tests (BMP can be large)
+)
+LARGE_IMAGE_DIMENSION = 2000  # Dimension for large image tests
+SMALL_IMAGE_DIMENSION = 10  # Dimension for small image tests
+
+# Quality test values
+QUALITY_LOW = 20
+QUALITY_HIGH = 95
+QUALITY_MIN = 1
+QUALITY_MAX = 100
+
+# Test iteration counts
+MEMORY_TEST_ITERATIONS = 10
+STRESS_TEST_ITERATIONS = 5
+
+
+# =============================================================================
+# Test Helper Functions
 # =============================================================================
 
 
@@ -504,6 +529,9 @@ def assert_valid_bytes_output(result: bytes, context: str = "operation") -> None
     """
     assert isinstance(result, bytes), f"{context} must return a bytes object"
     assert len(result) > 0, f"{context} must return non-empty bytes"
+    assert len(result) < MAX_REASONABLE_FILE_SIZE, (
+        f"{context} produced unreasonably large output: {len(result)} bytes"
+    )
 
 
 def assert_file_created_properly(
@@ -518,10 +546,194 @@ def assert_file_created_properly(
         context: Description for error messages
     """
     assert file_path.exists(), f"{context} should be created at {file_path}"
-    assert file_path.stat().st_size > 0, f"Created {context} must not be empty"
+    file_size = file_path.stat().st_size
+    assert file_size > 0, f"Created {context} must not be empty"
+    assert file_size < MAX_REASONABLE_FILE_SIZE, (
+        f"Created {context} is unreasonably large: {file_size} bytes"
+    )
     assert file_path.suffix == expected_extension, (
         f"{context} must have correct extension {expected_extension}"
     )
+
+
+def assert_handler_interface_complete(handler, format_name: str) -> None:
+    """
+    Assert that a handler implements the complete required interface.
+
+    Args:
+        handler: Handler instance to validate
+        format_name: Expected format name for error messages
+    """
+    # Required properties
+    required_attrs = ["file_extension", "format_name", "config"]
+    for attr in required_attrs:
+        assert hasattr(handler, attr), f"Handler for {format_name} must have {attr}"
+
+    # Required methods
+    required_methods = ["save", "get_bytes"]
+    for method in required_methods:
+        assert hasattr(handler, method) and callable(getattr(handler, method)), (
+            f"Handler for {format_name} must have callable {method} method"
+        )
+
+    # Property types
+    assert isinstance(handler.file_extension, str), (
+        f"file_extension must be string for {format_name}"
+    )
+    assert isinstance(handler.format_name, str), (
+        f"format_name must be string for {format_name}"
+    )
+    assert isinstance(handler.config, OutputConfig), (
+        f"config must be OutputConfig for {format_name}"
+    )
+
+
+def assert_config_preserved(
+    handler, expected_config: OutputConfig, context: str = ""
+) -> None:
+    """
+    Assert that handler config is properly preserved.
+
+    Args:
+        handler: Handler instance to check
+        expected_config: Expected config object
+        context: Additional context for error messages
+    """
+    prefix = f"{context}: " if context else ""
+    assert handler.config is expected_config, (
+        f"{prefix}Handler must use exact config instance"
+    )
+    assert handler.config.quality == expected_config.quality, (
+        f"{prefix}Quality setting must be preserved"
+    )
+    assert handler.config.optimize == expected_config.optimize, (
+        f"{prefix}Optimize setting must be preserved"
+    )
+
+
+def assert_raster_handler_properties(handler, format_name: str) -> None:
+    """
+    Assert that raster handlers have all required properties.
+
+    Args:
+        handler: Raster handler instance to validate
+        format_name: Format name for error messages
+    """
+    required_properties = {
+        "valid_extensions": list,
+        "supports_alpha": bool,
+        "supports_quality": bool,
+        "pil_format": str,
+    }
+
+    for prop_name, expected_type in required_properties.items():
+        assert hasattr(handler, prop_name), (
+            f"Raster handlers must have {prop_name} property"
+        )
+        prop_value = getattr(handler, prop_name)
+        assert isinstance(prop_value, expected_type), (
+            f"{prop_name} must be a {expected_type.__name__}, got {type(prop_value)}"
+        )
+
+
+def validate_image_modes_handled(handler, format_name: str) -> None:
+    """
+    Validate that handler can process different image modes appropriately.
+
+    Args:
+        handler: Handler to test
+        format_name: Format name for error messages
+    """
+    test_modes = ["RGB", "RGBA", "L", "LA"]
+    for mode in test_modes:
+        try:
+            test_image = create_test_image_with_mode(mode, (50, 50))
+            result = handler.get_bytes(test_image)
+            assert_valid_bytes_output(result, f"{format_name} with {mode} mode")
+        except Exception as e:
+            # Some mode conversions are expected to fail or be converted
+            # The key is that the handler shouldn't crash unexpectedly
+            assert isinstance(e, (ValueError, OSError, IOError)), (
+                f"Unexpected error type for {format_name} with {mode}: {type(e)}"
+            )
+
+
+def test_error_scenarios(handler, format_name: str) -> None:
+    """
+    Test common error scenarios for a handler.
+
+    Args:
+        handler: Handler to test
+        format_name: Format name for error messages
+    """
+    # Test invalid inputs
+    invalid_inputs = [None, "not an image", 123, []]
+    for invalid_input in invalid_inputs:
+        try:
+            handler.get_bytes(invalid_input)
+            assert False, (
+                f"{format_name} should reject invalid input: {type(invalid_input)}"
+            )
+        except (TypeError, AttributeError, OSError, IOError):
+            pass  # Expected
+
+    # Test zero-size image
+    try:
+        zero_image = Image.new("RGB", (0, 0))
+        handler.get_bytes(zero_image)
+        assert False, f"{format_name} should reject zero-size image"
+    except (ValueError, OSError, SystemError, MemoryError):
+        pass  # Expected
+
+
+def assert_quality_behavior_correct(
+    format_name: str, high_bytes: bytes, low_bytes: bytes
+) -> None:
+    """
+    Assert correct quality behavior based on format capabilities.
+
+    Args:
+        format_name: Name of the format being tested
+        high_bytes: Output from high quality setting
+        low_bytes: Output from low quality setting
+    """
+    if not supports_quality(format_name):
+        if format_name == "pdf":
+            # PDF may vary slightly due to timestamps or metadata
+            size_difference = abs(len(high_bytes) - len(low_bytes))
+            assert size_difference < 200, (
+                f"PDF quality setting should not significantly affect output size, difference: {size_difference}"
+            )
+        else:
+            # Other non-quality formats should produce identical output
+            assert high_bytes == low_bytes, (
+                f"Non-quality format {format_name} should produce identical output regardless of quality setting"
+            )
+
+
+def assert_optimization_behavior_correct(
+    format_name: str, optimized_bytes: bytes, unoptimized_bytes: bytes
+) -> None:
+    """
+    Assert correct optimization behavior based on format capabilities.
+
+    Args:
+        format_name: Name of the format being tested
+        optimized_bytes: Output from optimization enabled
+        unoptimized_bytes: Output from optimization disabled
+    """
+    if not supports_optimization(format_name):
+        if format_name == "pdf":
+            # PDF may vary slightly due to timestamps or metadata
+            size_difference = abs(len(optimized_bytes) - len(unoptimized_bytes))
+            assert size_difference < 200, (
+                f"PDF optimization setting should not significantly affect output size, difference: {size_difference}"
+            )
+        else:
+            # Other non-optimization formats should produce identical output
+            assert optimized_bytes == unoptimized_bytes, (
+                f"Non-optimization format {format_name} should produce identical output regardless of optimization setting"
+            )
 
 
 def create_test_pattern_image(width: int = 150, height: int = 150) -> Image.Image:

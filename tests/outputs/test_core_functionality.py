@@ -3,624 +3,339 @@ Core functionality tests for output handlers.
 
 Tests basic properties, initialization, fundamental operations,
 and configuration handling shared across all output handlers.
+
+This module focuses on testing the core contract that all output handlers
+must fulfill, ensuring consistency across formats and proper error handling.
 """
 
-from pathlib import Path
-
+import pytest
 from PIL import Image
 
 from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs import get_output_handler
 
 
-class TestOutputHandlerProperties:
-    """Test properties common to all output handlers."""
+class TestOutputHandlerInterface:
+    """Test that all handlers implement the required interface correctly."""
+
+    def test_handler_interface_complete(self, output_handler, format_name):
+        """Test that handler implements complete interface."""
+        from .conftest import assert_handler_interface_complete
+
+        assert_handler_interface_complete(output_handler, format_name)
 
     def test_file_extension_format(self, output_handler):
-        """Test that file extension starts with dot and matches format."""
-        # Arrange - handler is provided by fixture
-
-        # Act
+        """Test that file extension starts with dot and is valid."""
         extension = output_handler.file_extension
-
-        # Assert
         assert isinstance(extension, str), "File extension must be a string"
         assert extension.startswith("."), "File extension must start with a dot"
         assert len(extension) > 1, "File extension must contain more than just the dot"
 
-    def test_format_name_is_string(self, output_handler):
-        """Test that format name is a non-empty string."""
-        # Arrange - handler is provided by fixture
-
-        # Act
-        format_name = output_handler.format_name
-
-        # Assert
-        assert isinstance(format_name, str), "Format name must be a string"
-        assert len(format_name) > 0, "Format name must not be empty"
-
-    def test_raster_handler_has_required_properties(self, raster_format_name):
+    def test_raster_handler_properties(self, raster_format_name):
         """Test that raster handlers have all required properties."""
-        # Arrange
+        from .conftest import assert_raster_handler_properties
+
         handler = get_output_handler(raster_format_name)
+        assert_raster_handler_properties(handler, raster_format_name)
 
-        # Act & Assert - test all required raster properties exist and have correct types
-        assert hasattr(handler, "valid_extensions"), (
-            "Raster handlers must have valid_extensions property"
-        )
-        assert hasattr(handler, "supports_alpha"), (
-            "Raster handlers must have supports_alpha property"
-        )
-        assert hasattr(handler, "supports_quality"), (
-            "Raster handlers must have supports_quality property"
-        )
-        assert hasattr(handler, "pil_format"), (
-            "Raster handlers must have pil_format property"
-        )
-
-        # Verify property types
-        assert isinstance(handler.valid_extensions, list), (
-            "valid_extensions must be a list"
-        )
-        assert isinstance(handler.supports_alpha, bool), (
-            "supports_alpha must be a boolean"
-        )
-        assert isinstance(handler.supports_quality, bool), (
-            "supports_quality must be a boolean"
-        )
-        assert isinstance(handler.pil_format, str), "pil_format must be a string"
-
-    def test_valid_extensions_contains_primary(self, raster_format_name):
-        """Test that valid extensions contains the primary extension."""
-        # Arrange
+    def test_valid_extensions_include_primary(self, raster_format_name):
+        """Test that valid extensions include the primary extension."""
         handler = get_output_handler(raster_format_name)
-
-        # Act
-        extensions = handler.valid_extensions
-        primary_extension = handler.file_extension
-
-        # Assert
-        assert primary_extension in extensions, (
-            f"Primary extension {primary_extension} must be in valid_extensions {extensions}"
+        assert handler.file_extension in handler.valid_extensions, (
+            f"Primary extension {handler.file_extension} must be in valid_extensions"
         )
-
-    def test_vector_handler_properties(self, vector_format_name):
-        """Test that vector handlers have appropriate properties."""
-        # Arrange
-        handler = get_output_handler(vector_format_name)
-
-        # Act & Assert - vector handlers should have basic properties
-        assert hasattr(handler, "file_extension"), (
-            "Vector handlers must have file_extension property"
-        )
-        assert hasattr(handler, "format_name"), (
-            "Vector handlers must have format_name property"
-        )
-
-        # Vector handlers may not have raster-specific properties
-        file_extension = handler.file_extension
-        format_name = handler.format_name
-
-        assert isinstance(file_extension, str), "file_extension must be a string"
-        assert isinstance(format_name, str), "format_name must be a string"
 
 
 class TestOutputHandlerInitialization:
-    """Test initialization patterns across all handlers."""
+    """Test initialization patterns and config handling."""
 
-    def test_init_without_config(self, format_name):
-        """Test initialization without config creates default config."""
-        # Arrange - format_name provided by fixture
+    @pytest.mark.parametrize(
+        "config_input,expected_type",
+        [
+            (None, OutputConfig),
+            (OutputConfig(), OutputConfig),
+            (OutputConfig(quality=80), OutputConfig),
+        ],
+    )
+    def test_config_initialization(self, format_name, config_input, expected_type):
+        """Test various config initialization scenarios."""
+        handler = get_output_handler(format_name, config_input)
 
-        # Act
-        handler = get_output_handler(format_name)
-
-        # Assert
-        assert handler.config is not None, (
-            "Handler must have a config when initialized without arguments"
-        )
-        assert isinstance(handler.config, OutputConfig), (
-            "Default config must be an OutputConfig instance"
-        )
-
-    def test_init_with_config(self, format_name):
-        """Test initialization with custom config retains the provided config."""
-        # Arrange
-        custom_config = OutputConfig(quality=80, optimize=True)
-
-        # Act
-        handler = get_output_handler(format_name, custom_config)
-
-        # Assert
-        assert handler.config is custom_config, (
-            "Handler must retain the exact config instance provided"
-        )
-        assert handler.config.quality == 80, (
-            "Custom config quality setting must be preserved"
-        )
-        assert handler.config.optimize is True, (
-            "Custom config optimize setting must be preserved"
+        assert handler.config is not None, "Handler must have a config"
+        assert isinstance(handler.config, expected_type), (
+            "Config must be OutputConfig instance"
         )
 
-    def test_init_with_none_config(self, format_name):
-        """Test initialization with None config creates default config."""
-        # Arrange
-        none_config = None
+        if config_input is not None and hasattr(config_input, "quality"):
+            assert handler.config.quality == config_input.quality, (
+                "Custom config must be preserved"
+            )
 
-        # Act
-        handler = get_output_handler(format_name, none_config)
-
-        # Assert
-        assert handler.config is not None, (
-            "Handler must create default config when None is provided"
-        )
-        assert isinstance(handler.config, OutputConfig), (
-            "Default config must be an OutputConfig instance"
-        )
-
-    def test_config_independence_across_instances(self, format_name):
-        """Test that different handler instances have independent configs."""
-        # Arrange
+    def test_config_independence(self, format_name):
+        """Test that handler instances have independent configs."""
         config1 = OutputConfig(quality=90)
         config2 = OutputConfig(quality=10)
 
-        # Act
         handler1 = get_output_handler(format_name, config1)
         handler2 = get_output_handler(format_name, config2)
-        handler3 = get_output_handler(format_name)  # Default config
+        handler3 = get_output_handler(format_name)
 
-        # Assert
+        # Configs should be independent
         assert handler1.config is not handler2.config, (
-            "Different handlers must have independent config instances"
+            "Different handlers must have independent configs"
         )
         assert handler1.config is not handler3.config, (
             "Default and custom configs must be independent"
         )
-        assert handler2.config is not handler3.config, (
-            "Different custom configs must be independent"
-        )
-        assert handler1.config.quality == 90, "Handler1 must retain its config settings"
-        assert handler2.config.quality == 10, "Handler2 must retain its config settings"
+        assert handler2.config is not handler3.config, "All configs must be independent"
+
+        # Values should be preserved
+        assert handler1.config.quality == 90, "Handler1 must retain its config"
+        assert handler2.config.quality == 10, "Handler2 must retain its config"
 
 
-class TestOutputHandlerBasicFunctionality:
-    """Test basic functionality common to all handlers."""
+class TestOutputHandlerBasicOperations:
+    """Test fundamental save and get_bytes operations."""
 
-    def test_get_bytes_returns_bytes(self, output_handler, test_image):
-        """Test that get_bytes returns valid bytes object."""
-        # Arrange - fixtures provide handler and test image
+    def test_get_bytes_basic_operation(self, output_handler, test_image):
+        """Test that get_bytes returns valid bytes."""
+        from .conftest import assert_valid_bytes_output
 
-        # Act
         result = output_handler.get_bytes(test_image)
+        assert_valid_bytes_output(result, f"{output_handler.format_name} get_bytes")
 
-        # Assert
-        assert isinstance(result, bytes), "get_bytes must return a bytes object"
-        assert len(result) > 0, "get_bytes must return non-empty bytes"
+    def test_save_basic_operation(self, output_handler, test_image, temp_dir):
+        """Test that save creates valid files."""
+        from .conftest import assert_file_created_properly
 
-    def test_save_creates_file(self, output_handler, test_image, temp_dir):
-        """Test that save creates a file with correct extension."""
-        # Arrange
         output_path = temp_dir / f"test{output_handler.file_extension}"
-
-        # Act
         output_handler.save(test_image, output_path)
+        assert_file_created_properly(output_path, output_handler.file_extension)
 
-        # Assert
-        assert output_path.exists(), f"File should be created at {output_path}"
-        assert output_path.stat().st_size > 0, "Created file must not be empty"
-        assert output_path.suffix == output_handler.file_extension, (
-            "File must have correct extension"
-        )
+    @pytest.mark.parametrize("path_type", ["string", "pathlib"])
+    def test_save_accepts_both_path_types(
+        self, output_handler, test_image, temp_dir, path_type
+    ):
+        """Test save accepts both string and Path objects."""
+        from .conftest import assert_file_created_properly
 
-    def test_save_with_string_path(self, output_handler, test_image, temp_dir):
-        """Test save accepts string paths in addition to Path objects."""
-        # Arrange
-        output_path_str = str(temp_dir / f"test{output_handler.file_extension}")
+        base_path = temp_dir / f"test_{path_type}{output_handler.file_extension}"
+        path_input = str(base_path) if path_type == "string" else base_path
 
-        # Act
-        output_handler.save(test_image, output_path_str)
-
-        # Assert
-        output_path = Path(output_path_str)
-        assert output_path.exists(), (
-            f"File should be created at string path {output_path_str}"
-        )
-        assert output_path.stat().st_size > 0, (
-            "File created from string path must not be empty"
-        )
+        output_handler.save(test_image, path_input)
+        assert_file_created_properly(base_path, output_handler.file_extension)
 
     def test_save_auto_extension(self, output_handler, test_image, temp_dir):
         """Test that save automatically adds extension when missing."""
-        # Arrange
+        from .conftest import assert_file_created_properly
+
         base_name = "test_no_extension"
         output_path = temp_dir / base_name
         expected_path = temp_dir / f"{base_name}{output_handler.file_extension}"
 
-        # Act
         output_handler.save(test_image, output_path)
-
-        # Assert
-        assert expected_path.exists(), (
-            f"File should be created with auto-added extension at {expected_path}"
-        )
+        assert_file_created_properly(expected_path, output_handler.file_extension)
         assert not output_path.exists(), (
-            f"Original path without extension should not exist: {output_path}"
+            "Original path without extension should not exist"
         )
-        assert expected_path.stat().st_size > 0, "Auto-extension file must not be empty"
 
-    def test_save_creates_directory(self, output_handler, test_image, temp_dir):
-        """Test that save creates parent directories when they don't exist."""
-        # Arrange
+    def test_save_creates_directories(self, output_handler, test_image, temp_dir):
+        """Test that save creates parent directories."""
+        from .conftest import assert_file_created_properly
+
         nested_path = (
-            temp_dir / "nested" / "dir" / f"test{output_handler.file_extension}"
+            temp_dir / "nested" / "dirs" / f"test{output_handler.file_extension}"
         )
-        parent_dir = nested_path.parent
+        assert not nested_path.parent.exists(), "Parent should not exist initially"
 
-        # Verify parent doesn't exist initially
-        assert not parent_dir.exists(), (
-            f"Parent directory should not exist initially: {parent_dir}"
-        )
-
-        # Act
         output_handler.save(test_image, nested_path)
+        assert_file_created_properly(nested_path, output_handler.file_extension)
+        assert nested_path.parent.is_dir(), "Parent directories should be created"
 
-        # Assert
-        assert nested_path.exists(), (
-            f"File should be created at nested path: {nested_path}"
+
+class TestOutputHandlerImageModeSupport:
+    """Test support for different image modes and conversions."""
+
+    @pytest.mark.parametrize("mode", ["RGB", "RGBA", "L", "LA"])
+    def test_image_mode_handling(self, output_handler, mode):
+        """Test that handlers can process different image modes."""
+        from .conftest import assert_valid_bytes_output, create_test_image_with_mode
+
+        test_image = create_test_image_with_mode(mode, (100, 100))
+        result = output_handler.get_bytes(test_image)
+        assert_valid_bytes_output(
+            result, f"{output_handler.format_name} with {mode} mode"
         )
-        assert parent_dir.is_dir(), (
-            f"Parent directories should be created: {parent_dir}"
+
+    def test_transparency_handling(self, output_handler, rgba_image):
+        """Test handling of images with transparency."""
+        from .conftest import assert_valid_bytes_output
+
+        result = output_handler.get_bytes(rgba_image)
+        assert_valid_bytes_output(
+            result, f"{output_handler.format_name} with transparency"
         )
-        assert nested_path.stat().st_size > 0, (
-            "File in nested directory must not be empty"
-        )
-
-    def test_get_bytes_and_save_consistency(self, output_handler, test_image, temp_dir):
-        """Test that get_bytes and save produce consistent results."""
-        # Arrange
-        output_path = temp_dir / f"consistency_test{output_handler.file_extension}"
-
-        # Act
-        bytes_result = output_handler.get_bytes(test_image)
-        output_handler.save(test_image, output_path)
-        saved_bytes = output_path.read_bytes()
-
-        # Assert
-        assert len(bytes_result) > 0, "get_bytes must return non-empty data"
-        assert len(saved_bytes) > 0, "Saved file must contain non-empty data"
-        # Note: We don't assert equality because some formats (like PDF) may include
-        # timestamps or other non-deterministic data that differs between calls
 
 
-# =============================================================================
-# Configuration and Quality Tests
-# =============================================================================
+class TestOutputHandlerErrorHandling:
+    """Test error handling for various invalid inputs and edge cases."""
+
+    @pytest.mark.parametrize("invalid_input", [None, "not an image", 123, []])
+    def test_invalid_image_inputs(self, output_handler, invalid_input):
+        """Test handling of invalid image inputs."""
+        with pytest.raises((TypeError, AttributeError, OSError, IOError)):
+            output_handler.get_bytes(invalid_input)
+
+    def test_zero_size_image(self, output_handler):
+        """Test handling of zero-size images."""
+        with pytest.raises((ValueError, OSError, SystemError, MemoryError)):
+            zero_image = Image.new("RGB", (0, 0))
+            output_handler.get_bytes(zero_image)
+
+    def test_corrupted_image_handling(self, output_handler):
+        """Test handling of corrupted image data."""
+        corrupted_image = Image.new("RGB", (10, 10))
+        corrupted_image.close()  # Simulate corruption
+
+        try:
+            output_handler.get_bytes(corrupted_image)
+            # Some handlers may still work with closed images
+        except (ValueError, OSError):
+            pass  # Expected for most formats
 
 
-class TestOutputHandlerConfigurationHandling:
-    """Test configuration handling across handlers."""
+class TestOutputHandlerConfiguration:
+    """Test configuration handling and option support."""
 
-    def test_quality_setting_respected(self, format_name):
-        """Test that quality settings are handled appropriately for all formats."""
-        # Arrange
-        quality_config = OutputConfig(quality=50)
-        handler = get_output_handler(format_name, quality_config)
-        test_image = Image.new("RGB", (100, 100), "red")
+    @pytest.mark.parametrize("quality", [1, 50, 95, 100])
+    def test_quality_settings(self, format_name, test_image, quality):
+        """Test that quality settings are handled appropriately."""
+        from .conftest import assert_config_preserved, assert_valid_bytes_output
 
-        # Act
+        config = OutputConfig(quality=quality)
+        handler = get_output_handler(format_name, config)
+
         result = handler.get_bytes(test_image)
+        assert_valid_bytes_output(result, f"{format_name} quality {quality}")
+        assert_config_preserved(handler, config, f"Quality {quality}")
 
-        # Assert
-        assert isinstance(result, bytes), (
-            "Quality config should produce valid bytes output"
-        )
-        assert len(result) > 0, "Quality config output must not be empty"
-        assert handler.config.quality == 50, (
-            "Handler must retain the configured quality setting"
-        )
+    @pytest.mark.parametrize("optimize", [True, False])
+    def test_optimization_settings(self, format_name, test_image, optimize):
+        """Test that optimization settings are handled appropriately."""
+        from .conftest import assert_config_preserved, assert_valid_bytes_output
 
-    def test_optimization_setting_respected(self, format_name):
-        """Test that optimization settings are handled appropriately for all formats."""
-        # Arrange
-        optimize_config = OutputConfig(optimize=True)
-        handler = get_output_handler(format_name, optimize_config)
-        test_image = Image.new("RGB", (100, 100), "red")
+        config = OutputConfig(optimize=optimize)
+        handler = get_output_handler(format_name, config)
 
-        # Act
         result = handler.get_bytes(test_image)
+        assert_valid_bytes_output(result, f"{format_name} optimize {optimize}")
+        assert_config_preserved(handler, config, f"Optimize {optimize}")
 
-        # Assert
-        assert isinstance(result, bytes), (
-            "Optimize config should produce valid bytes output"
+    def test_complex_config_combinations(self, format_name, test_image):
+        """Test complex configuration combinations."""
+        from .conftest import assert_config_preserved, assert_valid_bytes_output
+
+        complex_config = OutputConfig(
+            quality=75, optimize=True, svg_use_vector=False, dpi=200
         )
-        assert len(result) > 0, "Optimize config output must not be empty"
-        assert handler.config.optimize is True, (
-            "Handler must retain the configured optimization setting"
-        )
-
-    def test_config_settings_are_preserved(self, format_name):
-        """Test that all config settings are preserved in handler."""
-        # Arrange
-        complex_config = OutputConfig(quality=75, optimize=True, svg_use_vector=False)
-
-        # Act
         handler = get_output_handler(format_name, complex_config)
 
-        # Assert
-        assert handler.config is complex_config, (
-            "Handler must use the exact config instance provided"
-        )
-        assert handler.config.quality == 75, "Quality setting must be preserved"
-        assert handler.config.optimize is True, "Optimize setting must be preserved"
-        assert handler.config.svg_use_vector is False, (
-            "SVG vector setting must be preserved"
-        )
+        result = handler.get_bytes(test_image)
+        assert_valid_bytes_output(result, f"{format_name} complex config")
+        assert_config_preserved(handler, complex_config, "Complex config")
 
-    def test_config_changes_dont_affect_other_handlers(self, format_name):
-        """Test that config changes don't affect other handler instances."""
-        # Arrange
-        config1 = OutputConfig(quality=90, optimize=True)
-        config2 = OutputConfig(quality=10, optimize=False)
+    def test_config_isolation_between_handlers(self, format_name):
+        """Test that config changes don't affect other handlers."""
+        config1 = OutputConfig(quality=90)
+        config2 = OutputConfig(quality=10)
 
-        # Act
         handler1 = get_output_handler(format_name, config1)
         handler2 = get_output_handler(format_name, config2)
 
         # Modify config1 after handler creation
         config1.quality = 50
 
-        # Assert
-        assert handler1.config.quality == 50, (
-            "Handler1 should see config changes to its config object"
-        )
-        assert handler2.config.quality == 10, (
-            "Handler2 should not be affected by changes to other configs"
-        )
-        assert handler1.config is not handler2.config, (
-            "Handlers must have independent config instances"
-        )
-
-    def test_unsupported_config_options_handled_gracefully(self, format_name):
-        """Test that formats handle unsupported config options without errors."""
-        # Arrange
-        config_with_all_options = OutputConfig(
-            quality=85,
-            optimize=True,
-            svg_use_vector=True,  # Only relevant for SVG
-        )
-        handler = get_output_handler(format_name, config_with_all_options)
-        test_image = Image.new("RGB", (100, 100), "red")
-
-        # Act - should not raise errors even for unsupported options
-        result = handler.get_bytes(test_image)
-
-        # Assert
-        assert isinstance(result, bytes), (
-            "Handler must produce valid output even with unsupported config options"
-        )
-        assert len(result) > 0, "Output must not be empty regardless of config support"
-
-        # Config should still be preserved even if not all options are used
-        assert handler.config.quality == 85, "Quality setting should be preserved"
-        assert handler.config.optimize is True, "Optimize setting should be preserved"
-        assert handler.config.svg_use_vector is True, "SVG setting should be preserved"
-
-    def test_extreme_quality_values_handled(self, format_name):
-        """Test that extreme quality values are handled appropriately."""
-        # Arrange
-        test_image = Image.new("RGB", (50, 50), "red")
-
-        # Test minimum quality
-        min_handler = get_output_handler(format_name, OutputConfig(quality=1))
-        # Test maximum quality
-        max_handler = get_output_handler(format_name, OutputConfig(quality=100))
-
-        # Act
-        min_result = min_handler.get_bytes(test_image)
-        max_result = max_handler.get_bytes(test_image)
-
-        # Assert
-        assert isinstance(min_result, bytes), "Minimum quality must produce valid bytes"
-        assert len(min_result) > 0, "Minimum quality output must not be empty"
-        assert isinstance(max_result, bytes), "Maximum quality must produce valid bytes"
-        assert len(max_result) > 0, "Maximum quality output must not be empty"
+        assert handler1.config.quality == 50, "Handler1 should see config changes"
+        assert handler2.config.quality == 10, "Handler2 should not be affected"
 
 
-class TestOutputHandlerQualityAndOptimization:
-    """Test quality and optimization features where supported."""
+class TestOutputHandlerPerformance:
+    """Test performance characteristics and resource management."""
 
-    def test_quality_settings_handled_appropriately(self, format_name):
-        """Test that quality settings are handled appropriately for all formats."""
-        from .conftest import supports_quality
+    def test_large_image_handling(self, output_handler):
+        """Test handling of large images."""
+        from .conftest import LARGE_IMAGE_DIMENSION, assert_valid_bytes_output
 
-        # Arrange
-        test_image = Image.new("RGB", (200, 200), "red")
-        high_quality_config = OutputConfig(quality=95)
-        low_quality_config = OutputConfig(quality=20)
-        format_supports_quality = supports_quality(format_name)
-
-        # Act
-        high_quality_handler = get_output_handler(format_name, high_quality_config)
-        low_quality_handler = get_output_handler(format_name, low_quality_config)
-
-        high_quality_bytes = high_quality_handler.get_bytes(test_image)
-        low_quality_bytes = low_quality_handler.get_bytes(test_image)
-
-        # Assert - all formats should produce valid output
-        assert isinstance(high_quality_bytes, bytes), (
-            f"High quality {format_name} must produce bytes"
-        )
-        assert len(high_quality_bytes) > 0, (
-            f"High quality {format_name} must produce non-empty output"
-        )
-        assert isinstance(low_quality_bytes, bytes), (
-            f"Low quality {format_name} must produce bytes"
-        )
-        assert len(low_quality_bytes) > 0, (
-            f"Low quality {format_name} must produce non-empty output"
+        large_image = Image.new(
+            "RGB", (LARGE_IMAGE_DIMENSION, LARGE_IMAGE_DIMENSION), "blue"
         )
 
-        # Assert - behavior should match format capabilities
-        if format_supports_quality:
-            # Quality-supporting formats should accept different quality settings
-            # (output may or may not differ depending on image content and format)
-            assert high_quality_handler.config.quality == 95, (
-                "High quality handler must preserve quality setting"
+        try:
+            result = output_handler.get_bytes(large_image)
+            assert_valid_bytes_output(
+                result, f"Large image {output_handler.format_name}"
             )
-            assert low_quality_handler.config.quality == 20, (
-                "Low quality handler must preserve quality setting"
-            )
-        else:
-            # Non-quality formats should produce consistent output regardless of quality setting
-            if format_name == "pdf":
-                # PDF may vary slightly due to timestamps or metadata
-                size_difference = abs(len(high_quality_bytes) - len(low_quality_bytes))
-                assert size_difference < 200, (
-                    f"PDF quality setting should not significantly affect output size, difference: {size_difference}"
-                )
-            else:
-                # Other non-quality formats should produce identical output
-                assert high_quality_bytes == low_quality_bytes, (
-                    f"Non-quality format {format_name} should produce identical output regardless of quality setting"
-                )
+        finally:
+            large_image.close()
 
-    def test_optimization_settings_handled_appropriately(self, format_name):
-        """Test that optimization settings are handled appropriately for all formats."""
-        from .conftest import supports_optimization
+    def test_multiple_operations_memory_stability(self, output_handler, test_image):
+        """Test that multiple operations don't cause memory issues."""
+        from .conftest import MEMORY_TEST_ITERATIONS
 
-        # Arrange
-        test_image = Image.new("RGB", (100, 100), "red")
-        optimized_config = OutputConfig(optimize=True)
-        unoptimized_config = OutputConfig(optimize=False)
-        format_supports_optimization = supports_optimization(format_name)
+        for i in range(MEMORY_TEST_ITERATIONS):
+            result = output_handler.get_bytes(test_image)
+            assert len(result) > 0, f"Operation {i + 1} must produce valid output"
 
-        # Act
-        optimized_handler = get_output_handler(format_name, optimized_config)
-        unoptimized_handler = get_output_handler(format_name, unoptimized_config)
+    def test_output_size_reasonableness(self, output_handler, small_image):
+        """Test that output sizes are reasonable for small images."""
+        from .conftest import MIN_FILE_SIZE, assert_valid_bytes_output
 
-        optimized_bytes = optimized_handler.get_bytes(test_image)
-        unoptimized_bytes = unoptimized_handler.get_bytes(test_image)
+        result = output_handler.get_bytes(small_image)
+        assert_valid_bytes_output(result, f"Small image {output_handler.format_name}")
+        assert len(result) >= MIN_FILE_SIZE, f"Output too small: {len(result)} bytes"
 
-        # Assert - all formats should produce valid output
-        assert isinstance(optimized_bytes, bytes), (
-            f"Optimized {format_name} must produce bytes"
-        )
-        assert len(optimized_bytes) > 0, (
-            f"Optimized {format_name} must produce non-empty output"
-        )
-        assert isinstance(unoptimized_bytes, bytes), (
-            f"Unoptimized {format_name} must produce bytes"
-        )
-        assert len(unoptimized_bytes) > 0, (
-            f"Unoptimized {format_name} must produce non-empty output"
-        )
 
-        # Assert - behavior should match format capabilities
-        if format_supports_optimization:
-            # Optimization-supporting formats should accept different optimization settings
-            # (optimized output is typically smaller, but not guaranteed for all images)
-            assert optimized_handler.config.optimize is True, (
-                "Optimized handler must preserve optimization setting"
-            )
-            assert unoptimized_handler.config.optimize is False, (
-                "Unoptimized handler must preserve optimization setting"
-            )
-        else:
-            # Non-optimization formats should produce consistent output regardless of optimization setting
-            if format_name == "pdf":
-                # PDF may vary slightly due to timestamps or metadata
-                size_difference = abs(len(optimized_bytes) - len(unoptimized_bytes))
-                assert size_difference < 200, (
-                    f"PDF optimization setting should not significantly affect output size, difference: {size_difference}"
-                )
-            else:
-                # Other non-optimization formats should produce identical output
-                assert optimized_bytes == unoptimized_bytes, (
-                    f"Non-optimization format {format_name} should produce identical output regardless of optimization setting"
-                )
+class TestOutputHandlerConsistency:
+    """Test consistency between different handler operations."""
 
-    def test_quality_and_optimization_combinations(self, format_name):
-        """Test combinations of quality and optimization settings."""
-        # Arrange
-        test_image = Image.new("RGB", (150, 150), "blue")
-        config_combinations = [
-            ("high_qual_optimized", OutputConfig(quality=90, optimize=True)),
-            ("high_qual_unoptimized", OutputConfig(quality=90, optimize=False)),
-            ("low_qual_optimized", OutputConfig(quality=30, optimize=True)),
-            ("low_qual_unoptimized", OutputConfig(quality=30, optimize=False)),
-        ]
+    def test_get_bytes_save_output_similarity(
+        self, output_handler, test_image, temp_dir
+    ):
+        """Test that get_bytes and save produce similar results."""
+        # Get bytes result
+        bytes_result = output_handler.get_bytes(test_image)
 
-        # Act - generate output for each combination
-        results = {}
-        for config_name, config in config_combinations:
-            handler = get_output_handler(format_name, config)
-            output_bytes = handler.get_bytes(test_image)
-            results[config_name] = {
-                "bytes": output_bytes,
-                "size": len(output_bytes),
-                "config": config,
-            }
+        # Save to file
+        output_path = temp_dir / f"consistency_test{output_handler.file_extension}"
+        output_handler.save(test_image, output_path)
+        saved_bytes = output_path.read_bytes()
 
-        # Assert - all combinations should produce valid output
-        for config_name, result in results.items():
-            assert isinstance(result["bytes"], bytes), (
-                f"Config {config_name} for {format_name} must produce bytes"
-            )
-            assert result["size"] > 0, (
-                f"Config {config_name} for {format_name} must produce non-empty output"
+        # Both should produce non-empty data
+        assert len(bytes_result) > 0, "get_bytes must return non-empty data"
+        assert len(saved_bytes) > 0, "Saved file must contain non-empty data"
+
+        # For most formats, they should be identical or very similar
+        # PDF may have timestamps that cause minor differences
+        if output_handler.format_name.lower() != "pdf":
+            size_difference = abs(len(bytes_result) - len(saved_bytes))
+            max_allowed_difference = max(
+                100, len(bytes_result) * 0.01
+            )  # 1% or 100 bytes
+            assert size_difference <= max_allowed_difference, (
+                f"Size difference too large: {size_difference} bytes"
             )
 
-            # Verify config preservation
-            expected_quality = result["config"].quality
-            expected_optimize = result["config"].optimize
-            handler = get_output_handler(format_name, result["config"])
-            assert handler.config.quality == expected_quality, (
-                f"Quality setting must be preserved for {config_name}"
-            )
-            assert handler.config.optimize == expected_optimize, (
-                f"Optimize setting must be preserved for {config_name}"
-            )
+    def test_repeated_operations_consistency(self, output_handler, test_image):
+        """Test that repeated operations on same image produce consistent results."""
+        results = [output_handler.get_bytes(test_image) for _ in range(3)]
 
-    def test_extreme_quality_values_handled_gracefully(self, format_name):
-        """Test that extreme quality values are handled without errors."""
-        # Arrange
-        test_image = Image.new("RGB", (50, 50), "green")
-        extreme_configs = [
-            ("minimum_quality", OutputConfig(quality=1)),
-            ("maximum_quality", OutputConfig(quality=100)),
-            ("default_quality", OutputConfig()),  # Default quality for comparison
-        ]
+        # All results should be non-empty
+        for i, result in enumerate(results):
+            assert len(result) > 0, f"Result {i + 1} must be non-empty"
 
-        # Act - test each extreme configuration
-        results = {}
-        for config_name, config in extreme_configs:
-            handler = get_output_handler(format_name, config)
-            output_bytes = handler.get_bytes(test_image)
-            results[config_name] = {
-                "bytes": output_bytes,
-                "size": len(output_bytes),
-                "quality": config.quality,
-            }
-
-        # Assert - all extreme values should be handled gracefully
-        for config_name, result in results.items():
-            assert isinstance(result["bytes"], bytes), (
-                f"Extreme quality config {config_name} for {format_name} must produce bytes"
-            )
-            assert result["size"] > 0, (
-                f"Extreme quality config {config_name} for {format_name} must produce non-empty output"
-            )
-            assert result["size"] < 1000000, (
-                f"Output size should be reasonable for {config_name}, got {result['size']} bytes"
-            )
-
-        # Assert - quality settings should be preserved even if not used
-        min_quality_handler = get_output_handler(format_name, extreme_configs[0][1])
-        max_quality_handler = get_output_handler(format_name, extreme_configs[1][1])
-
-        assert min_quality_handler.config.quality == 1, (
-            "Minimum quality setting must be preserved"
-        )
-        assert max_quality_handler.config.quality == 100, (
-            "Maximum quality setting must be preserved"
-        )
+        # For deterministic formats, results should be identical
+        # PDF may vary due to timestamps
+        if output_handler.format_name.lower() != "pdf":
+            first_result = results[0]
+            for i, result in enumerate(results[1:], 2):
+                assert result == first_result, f"Result {i} differs from first result"
