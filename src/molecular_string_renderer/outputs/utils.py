@@ -276,6 +276,10 @@ def build_save_kwargs(format_info: FormatInfo, config: OutputConfig) -> dict[str
     """
     kwargs = {"format": format_info.pil_format}
 
+    # Add DPI information for all formats that support it
+    if format_info.pil_format in ("PNG", "JPEG", "TIFF"):
+        kwargs["dpi"] = (config.dpi, config.dpi)
+
     if format_info.supports_quality:
         kwargs.update(
             {
@@ -283,6 +287,15 @@ def build_save_kwargs(format_info: FormatInfo, config: OutputConfig) -> dict[str
                 "quality": config.quality,
             }
         )
+
+        # Progressive JPEG support
+        if format_info.pil_format == "JPEG" and config.progressive:
+            kwargs["progressive"] = True
+
+        # Lossless WebP support
+        if format_info.pil_format == "WEBP" and config.lossless:
+            kwargs["lossless"] = True
+
     elif config.optimize:
         kwargs["optimize"] = True
 

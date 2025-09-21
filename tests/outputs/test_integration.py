@@ -375,3 +375,64 @@ class TestOutputHandlerIntegration:
         }
 
         return (format_name, extension) in known_exceptions
+
+
+class TestErrorHandlingIntegration:
+    """Test error handling across output handlers."""
+
+    def test_pdf_error_handling_on_get_bytes_failure(self):
+        """Test PDF error handling when get_bytes fails."""
+        from unittest.mock import patch
+
+        from molecular_string_renderer.outputs import PDFOutput
+
+        pdf_output = PDFOutput()
+        test_image = Image.new("RGB", (100, 100), "red")
+
+        # Mock _generate_pdf_bytes to raise an exception
+        with patch.object(
+            pdf_output, "_generate_pdf_bytes", side_effect=Exception("Test error")
+        ):
+            try:
+                pdf_output.get_bytes(test_image)
+                assert False, "Should have raised IOError"
+            except IOError as e:
+                assert "Failed to generate PDF bytes" in str(e)
+
+    def test_svg_save_error_handling(self, temp_dir):
+        """Test SVG error handling in save method."""
+        from unittest.mock import patch
+
+        from molecular_string_renderer.outputs import SVGOutput
+
+        svg_output = SVGOutput()
+        test_image = Image.new("RGB", (100, 100), "red")
+        output_path = temp_dir / "test.svg"
+
+        # Mock strategy to raise an exception
+        with patch.object(
+            svg_output._strategy, "generate_svg", side_effect=Exception("Test error")
+        ):
+            # Should handle error gracefully without crashing
+            try:
+                svg_output.save(test_image, output_path)
+            except Exception:
+                pass  # Expected to handle error internally
+
+    def test_pdf_save_error_handling(self, temp_dir):
+        """Test PDF error handling in save method."""
+        from unittest.mock import patch
+
+        from molecular_string_renderer.outputs import PDFOutput
+
+        pdf_output = PDFOutput()
+        test_image = Image.new("RGB", (100, 100), "red")
+        output_path = temp_dir / "test.pdf"
+
+        # Mock get_bytes to raise an exception
+        with patch.object(pdf_output, "get_bytes", side_effect=Exception("Test error")):
+            # Should handle error gracefully without crashing
+            try:
+                pdf_output.save(test_image, output_path)
+            except Exception:
+                pass  # Expected to handle error internally

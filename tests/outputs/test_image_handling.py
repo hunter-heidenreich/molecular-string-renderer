@@ -122,7 +122,7 @@ class TestOutputHandlerEdgeCases:
         assert isinstance(result, bytes), "Tiny image must produce bytes output"
         assert len(result) > 0, "Tiny image output must not be empty"
 
-    def test_large_image_dimensions(self, output_handler):
+    def test_large_image_dimensions(self, output_handler, format_name):
         """Test with reasonably large images to verify memory handling."""
         # Arrange
         large_image = Image.new("RGB", (1000, 800), "blue")
@@ -137,12 +137,21 @@ class TestOutputHandlerEdgeCases:
         # Assert
         assert isinstance(result, bytes), "Large image must produce bytes output"
         assert len(result) > 0, "Large image output must not be empty"
-        # Large images should produce substantial output
-        assert len(result) > 1000, (
-            f"Large image ({expected_pixels} pixels) should produce substantial output"
+
+        # Format-specific size expectations (WEBP with lossless compression is very efficient)
+        if format_name.lower() == "webp":
+            # WEBP lossless can compress solid colors extremely efficiently
+            min_expected_size = 50
+        else:
+            # Other formats should produce more substantial output for large images
+            min_expected_size = 1000
+
+        assert len(result) > min_expected_size, (
+            f"Large image ({expected_pixels} pixels) should produce output >= {min_expected_size} bytes "
+            f"for {format_name} format, got {len(result)} bytes"
         )
 
-    def test_square_vs_rectangular_images(self, output_handler):
+    def test_square_vs_rectangular_images(self, output_handler, format_name):
         """Test with different aspect ratios to verify layout handling."""
         # Arrange
         test_cases = [
@@ -167,7 +176,21 @@ class TestOutputHandlerEdgeCases:
         for name, result, size in results:
             assert isinstance(result, bytes), f"{name} image must produce bytes output"
             assert len(result) > 0, f"{name} image output must not be empty"
-            assert size > 100, f"{name} image should produce reasonable output size"
+
+            # Format-specific size expectations (WEBP with lossless compression is very efficient)
+            if format_name.lower() == "webp":
+                min_expected_size = (
+                    30  # WEBP lossless can compress solid colors extremely efficiently
+                )
+            else:
+                min_expected_size = (
+                    100  # Other formats should produce more substantial output
+                )
+
+            assert size > min_expected_size, (
+                f"{name} image should produce output >= {min_expected_size} bytes "
+                f"for {format_name} format, got {size} bytes"
+            )
 
     def test_extreme_aspect_ratios(self, output_handler):
         """Test with extreme aspect ratios to verify robustness."""

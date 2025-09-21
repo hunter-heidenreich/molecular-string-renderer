@@ -301,6 +301,7 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
         format=output_format,
         quality=args.quality,
         optimize=not args.no_optimize,
+        dpi=args.dpi,  # Use DPI from CLI args
     )
 
     return render_config, parser_config, output_config

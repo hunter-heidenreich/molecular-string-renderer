@@ -1045,3 +1045,172 @@ class TestRealWorldScenarios:
                 assert result.startswith(b"%PDF")
             elif format_name == "svg":
                 assert b"<svg" in result
+
+
+class TestImageModeUtilsExtended:
+    """Extended tests for ImageModeUtils to improve coverage."""
+
+    def test_convert_to_rgb_with_warning_various_modes(self):
+        """Test _convert_to_rgb_with_warning with various unsupported modes."""
+        # Test with a mode that will trigger the warning path
+        test_image = Image.new("I", (50, 50))  # 32-bit integer pixels
+        result = ImageModeUtils._convert_to_rgb_with_warning(test_image, "TEST_FORMAT")
+        assert result.mode == "RGB"
+
+    def test_ensure_jpeg_compatible_all_modes(self):
+        """Test ensure_jpeg_compatible with all possible image modes."""
+        # Already supported modes
+        supported_modes = ["RGB", "L"]
+        for mode in supported_modes:
+            test_image = Image.new(mode, (50, 50))
+            result = ImageModeUtils.ensure_jpeg_compatible(test_image)
+            assert result.mode == mode
+
+        # Test CMYK if supported
+        try:
+            cmyk_image = Image.new("CMYK", (50, 50))
+            result = ImageModeUtils.ensure_jpeg_compatible(cmyk_image)
+            assert result.mode == "CMYK"
+        except OSError:
+            # CMYK mode may not be directly creatable
+            pass
+
+        # Modes that need conversion
+        conversion_modes = ["RGBA", "LA", "PA", "P", "1"]
+        for mode in conversion_modes:
+            test_image = Image.new(mode, (50, 50))
+            result = ImageModeUtils.ensure_jpeg_compatible(test_image)
+            assert result.mode == "RGB"
+
+        # Test mode that triggers warning path
+        try:
+            unsupported_image = Image.new("I", (50, 50))  # 32-bit integer
+            result = ImageModeUtils.ensure_jpeg_compatible(unsupported_image)
+            assert result.mode == "RGB"
+        except OSError:
+            pass
+
+    def test_ensure_bmp_compatible_all_modes(self):
+        """Test ensure_bmp_compatible with all possible image modes."""
+        # Already supported modes
+        supported_modes = ["1", "L", "P", "RGB", "RGBA"]
+        for mode in supported_modes:
+            test_image = Image.new(mode, (50, 50))
+            result = ImageModeUtils.ensure_bmp_compatible(test_image)
+            assert result.mode == mode
+
+        # LA mode should convert to RGB
+        la_image = Image.new("LA", (50, 50))
+        result = ImageModeUtils.ensure_bmp_compatible(la_image)
+        assert result.mode == "RGB"
+
+        # Test mode that triggers warning path
+        try:
+            unsupported_image = Image.new("I", (50, 50))  # 32-bit integer
+            result = ImageModeUtils.ensure_bmp_compatible(unsupported_image)
+            assert result.mode == "RGB"
+        except OSError:
+            pass
+
+
+class TestBuildSaveKwargsExtended:
+    """Extended tests for build_save_kwargs to improve coverage."""
+
+    def test_build_save_kwargs_progressive_jpeg(self):
+        """Test build_save_kwargs with progressive JPEG setting."""
+        format_info = FormatRegistry.get_format_info("jpeg")
+        config = OutputConfig(progressive=True, quality=85, optimize=True)
+
+        kwargs = build_save_kwargs(format_info, config)
+
+        assert kwargs["progressive"] is True
+        assert kwargs["quality"] == 85
+        assert kwargs["optimize"] is True
+
+    def test_build_save_kwargs_lossless_webp(self):
+        """Test build_save_kwargs with lossless WebP setting."""
+        format_info = FormatRegistry.get_format_info("webp")
+        config = OutputConfig(lossless=True, quality=80, optimize=True)
+
+        kwargs = build_save_kwargs(format_info, config)
+
+        assert kwargs["lossless"] is True
+        assert kwargs["quality"] == 80
+        assert kwargs["optimize"] is True
+
+    def test_build_save_kwargs_optimize_only_for_non_quality_formats(self):
+        """Test build_save_kwargs with optimize for non-quality supporting formats."""
+        format_info = FormatRegistry.get_format_info(
+            "tiff"
+        )  # TIFF doesn't support quality
+        config = OutputConfig(optimize=True, quality=85)  # quality ignored for TIFF
+
+        kwargs = build_save_kwargs(format_info, config)
+
+        assert kwargs["optimize"] is True
+        assert "quality" not in kwargs  # TIFF doesn't support quality
+
+    def test_build_save_kwargs_dpi_support(self):
+        """Test build_save_kwargs DPI settings for supported formats."""
+        dpi_supporting_formats = ["png", "jpeg", "tiff"]
+
+        for format_name in dpi_supporting_formats:
+            format_info = FormatRegistry.get_format_info(format_name)
+            config = OutputConfig(dpi=150)
+
+            kwargs = build_save_kwargs(format_info, config)
+
+            assert kwargs["dpi"] == (150, 150)
+
+
+class TestFormatRegistryExtended:
+    """Extended tests for FormatRegistry to improve coverage."""
+
+    def test_format_info_post_init_extension_normalization(self):
+        """Test FormatInfo.__post_init__ extension normalization."""
+        # Test extension without dot gets dot added
+        info = FormatInfo(
+            extension="png",  # No dot
+            pil_format="PNG",
+            valid_extensions=[".png"],
+            supports_alpha=True,
+            supports_quality=True,
+        )
+
+        assert info.extension == ".png"
+
+    def test_format_info_post_init_valid_extensions_update(self):
+        """Test FormatInfo.__post_init__ valid_extensions update."""
+        # Test primary extension added to valid_extensions if missing
+        info = FormatInfo(
+            extension=".test",
+            pil_format="TEST",
+            valid_extensions=[".other"],  # Missing primary extension
+            supports_alpha=False,
+            supports_quality=False,
+        )
+
+        assert ".test" in info.valid_extensions
+        assert ".other" in info.valid_extensions
+
+    def test_get_supported_formats_includes_aliases(self):
+        """Test that get_supported_formats includes format aliases."""
+        supported = FormatRegistry.get_supported_formats()
+
+        # Should include both base formats and aliases
+        assert "jpeg" in supported
+        assert "jpg" in supported  # alias
+        assert "tiff" in supported
+        assert "tif" in supported  # alias
+
+    def test_format_registry_alias_consistency(self):
+        """Test that format aliases point to same FormatInfo object."""
+        jpeg_info = FormatRegistry.get_format_info("jpeg")
+        jpg_info = FormatRegistry.get_format_info("jpg")
+
+        assert jpeg_info is jpg_info  # Should be same object reference
+
+        tiff_info = FormatRegistry.get_format_info("tiff")
+        tif_info = FormatRegistry.get_format_info("tif")
+
+        assert tiff_info is tif_info  # Should be same object reference

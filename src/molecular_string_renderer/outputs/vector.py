@@ -110,6 +110,21 @@ class PDFOutput(VectorOutputHandler):
         with BytesIO() as buffer:
             c = canvas.Canvas(buffer, pagesize=letter)
 
+            # Add PDF metadata
+            if self.config.metadata:
+                if "Title" in self.config.metadata:
+                    c.setTitle(self.config.metadata["Title"])
+                if "Author" in self.config.metadata:
+                    c.setAuthor(self.config.metadata["Author"])
+                if "Subject" in self.config.metadata:
+                    c.setSubject(self.config.metadata["Subject"])
+                if "Creator" in self.config.metadata:
+                    c.setCreator(self.config.metadata["Creator"])
+                else:
+                    c.setCreator("molecular-string-renderer")
+            else:
+                c.setCreator("molecular-string-renderer")
+
             page_width, page_height = letter
 
             margin = 0.5 * inch
@@ -131,7 +146,9 @@ class PDFOutput(VectorOutputHandler):
             y = (page_height - actual_height) / 2
 
             with BytesIO() as img_buffer:
-                rgb_image.save(img_buffer, format="PNG")
+                rgb_image.save(
+                    img_buffer, format="PNG", dpi=(self.config.dpi, self.config.dpi)
+                )
                 img_buffer.seek(0)
 
                 img_reader = ImageReader(img_buffer)

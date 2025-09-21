@@ -19,7 +19,6 @@ class RenderConfig(BaseModel):
         width: Image width in pixels (100-2000).
         height: Image height in pixels (100-2000).
         background_color: Background color (name or hex code).
-        dpi: DPI for high-quality output (72-600).
         show_hydrogen: Show explicit hydrogen atoms.
         show_carbon: Show carbon atom labels.
         highlight_atoms: List of atom indices to highlight.
@@ -37,11 +36,6 @@ class RenderConfig(BaseModel):
     # Rendering options
     background_color: str = Field(
         default="white", description="Background color (name or hex)"
-    )
-
-    # Quality settings
-    dpi: int = Field(
-        default=150, ge=72, le=600, description="DPI for high-quality output"
     )
 
     # Molecular display options
@@ -155,6 +149,10 @@ class OutputConfig(BaseModel):
         format: Output format (png, svg, jpg, jpeg, pdf).
         quality: Output quality from 1-100.
         optimize: Optimize output file size.
+        dpi: DPI for high-quality output (72-600).
+        progressive: Use progressive encoding (JPEG).
+        lossless: Use lossless compression (WebP).
+        metadata: Include metadata in output files.
         svg_sanitize: Sanitize SVG output for security.
         svg_use_vector: Use true vector SVG rendering when possible.
         svg_line_width_mult: Line width multiplier for SVG rendering.
@@ -163,6 +161,16 @@ class OutputConfig(BaseModel):
     format: str = Field(default="png", description="Output format (png, svg, etc.)")
     quality: int = Field(default=95, ge=1, le=100, description="Output quality (1-100)")
     optimize: bool = Field(default=True, description="Optimize output file size")
+    dpi: int = Field(
+        default=150, ge=72, le=600, description="DPI for high-quality output"
+    )
+    progressive: bool = Field(
+        default=False, description="Use progressive encoding (JPEG)"
+    )
+    lossless: bool = Field(default=True, description="Use lossless compression (WebP)")
+    metadata: dict[str, str] | None = Field(
+        default=None, description="Metadata to embed in output files"
+    )
     svg_sanitize: bool = Field(
         default=True, description="Sanitize SVG output for security"
     )

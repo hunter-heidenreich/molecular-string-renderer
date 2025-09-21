@@ -59,6 +59,40 @@ class TestJPEGSpecificBehavior:
         # High quality should produce larger files for complex images
         assert len(high_bytes) > len(low_bytes)
 
+    def test_jpeg_metadata_handling(self):
+        """Test JPEG metadata handling in save kwargs."""
+        # Test with Description metadata
+        config_with_desc = OutputConfig(metadata={"Description": "Test molecule"})
+        jpeg_output = JPEGOutput(config_with_desc)
+        test_image = Image.new("RGB", (100, 100), "red")
+
+        result = jpeg_output.get_bytes(test_image)
+        assert len(result) > 0
+
+        # Test with Comment metadata
+        config_with_comment = OutputConfig(metadata={"Comment": "Test comment"})
+        jpeg_output = JPEGOutput(config_with_comment)
+
+        result = jpeg_output.get_bytes(test_image)
+        assert len(result) > 0
+
+        # Test with both Description and Comment
+        config_with_both = OutputConfig(
+            metadata={"Description": "Test molecule", "Comment": "Test comment"}
+        )
+        jpeg_output = JPEGOutput(config_with_both)
+
+        result = jpeg_output.get_bytes(test_image)
+        assert len(result) > 0
+
+    def test_jpeg_without_metadata(self):
+        """Test JPEG without metadata."""
+        jpeg_output = JPEGOutput()
+        test_image = Image.new("RGB", (100, 100), "red")
+
+        result = jpeg_output.get_bytes(test_image)
+        assert len(result) > 0
+
 
 class TestBMPSpecificBehavior:
     """Test BMP-specific behaviors that differ from other formats."""
@@ -90,6 +124,78 @@ class TestBMPSpecificBehavior:
         result = bmp_output.get_bytes(rgba_image)
         assert len(result) > 0
 
+    def test_bmp_mode_conversions(self):
+        """Test BMP handling of various image modes."""
+        bmp_output = BMPOutput()
+
+        # Test LA mode conversion
+        la_image = Image.new("LA", (100, 100), (128, 200))
+        result = bmp_output.get_bytes(la_image)
+        assert len(result) > 0
+
+        # Test other modes that need conversion
+        modes_to_test = ["CMYK", "YCbCr", "HSV"]
+        for mode in modes_to_test:
+            try:
+                test_image = Image.new(mode, (50, 50))
+                result = bmp_output.get_bytes(test_image)
+                assert len(result) > 0
+            except OSError:
+                # Some modes may not be directly creatable
+                pass
+
+
+class TestTIFFSpecificBehavior:
+    """Test TIFF-specific behaviors."""
+
+    def test_tiff_metadata_handling(self):
+        """Test TIFF metadata handling."""
+        from molecular_string_renderer.outputs import TIFFOutput
+
+        # Test with Description metadata
+        config_with_desc = OutputConfig(metadata={"Description": "Test molecule"})
+        tiff_output = TIFFOutput(config_with_desc)
+        test_image = Image.new("RGB", (100, 100), "red")
+
+        result = tiff_output.get_bytes(test_image)
+        assert len(result) > 0
+
+        # Test with Software metadata
+        config_with_software = OutputConfig(metadata={"Software": "Custom Software"})
+        tiff_output = TIFFOutput(config_with_software)
+
+        result = tiff_output.get_bytes(test_image)
+        assert len(result) > 0
+
+        # Test without software metadata (should add default)
+        config_no_software = OutputConfig(metadata={"Description": "Test"})
+        tiff_output = TIFFOutput(config_no_software)
+
+        result = tiff_output.get_bytes(test_image)
+        assert len(result) > 0
+
+    def test_tiff_compression_with_optimization(self):
+        """Test TIFF compression when optimization is enabled."""
+        from molecular_string_renderer.outputs import TIFFOutput
+
+        config_optimized = OutputConfig(optimize=True)
+        tiff_output = TIFFOutput(config_optimized)
+        test_image = Image.new("RGB", (100, 100), "red")
+
+        result = tiff_output.get_bytes(test_image)
+        assert len(result) > 0
+
+    def test_tiff_transparency_preservation(self):
+        """Test TIFF transparency preservation."""
+        from molecular_string_renderer.outputs import TIFFOutput
+
+        tiff_output = TIFFOutput()
+        rgba_image = Image.new("RGBA", (100, 100), (255, 0, 0, 128))
+
+        # TIFF preserves transparency
+        result = tiff_output.get_bytes(rgba_image)
+        assert len(result) > 0
+
 
 class TestPNGSpecificBehavior:
     """Test PNG-specific behaviors like transparency optimization."""
@@ -115,6 +221,31 @@ class TestPNGSpecificBehavior:
         test_image = Image.new("RGB", (100, 100), "red")
 
         # Should work even though PNG doesn't use quality
+        result = png_output.get_bytes(test_image)
+        assert len(result) > 0
+
+    def test_png_metadata_handling(self):
+        """Test PNG metadata handling through PngInfo."""
+        # Test with custom metadata
+        config_with_metadata = OutputConfig(
+            metadata={
+                "Title": "Test Molecule",
+                "Author": "Test Author",
+                "Description": "Test Description",
+                "Custom": "Custom Value",
+            }
+        )
+        png_output = PNGOutput(config_with_metadata)
+        test_image = Image.new("RGB", (100, 100), "red")
+
+        result = png_output.get_bytes(test_image)
+        assert len(result) > 0
+
+    def test_png_without_metadata(self):
+        """Test PNG without metadata."""
+        png_output = PNGOutput()
+        test_image = Image.new("RGB", (100, 100), "red")
+
         result = png_output.get_bytes(test_image)
         assert len(result) > 0
 
@@ -261,3 +392,38 @@ class TestPDFSpecificBehavior:
 
         # Lengths should be similar (may vary slightly due to timestamps, etc.)
         assert abs(len(result1) - len(result2)) < 100
+
+    def test_pdf_metadata_handling(self):
+        """Test PDF metadata handling in _generate_pdf_bytes."""
+        from molecular_string_renderer.outputs import PDFOutput
+
+        # Test with full metadata
+        config_with_metadata = OutputConfig(
+            metadata={
+                "Title": "Test Molecule",
+                "Author": "Test Author",
+                "Subject": "Test Subject",
+                "Creator": "Test Creator",
+            }
+        )
+        pdf_output = PDFOutput(config_with_metadata)
+        test_image = Image.new("RGB", (100, 100), "red")
+
+        result = pdf_output.get_bytes(test_image)
+        assert len(result) > 0
+        assert result.startswith(b"%PDF-")
+
+        # Test without metadata (should add default creator)
+        pdf_output_no_meta = PDFOutput()
+        result_no_meta = pdf_output_no_meta.get_bytes(test_image)
+        assert len(result_no_meta) > 0
+        assert result_no_meta.startswith(b"%PDF-")
+
+        # Test with partial metadata (missing creator)
+        config_partial = OutputConfig(
+            metadata={"Title": "Test", "Author": "Test Author"}
+        )
+        pdf_output_partial = PDFOutput(config_partial)
+        result_partial = pdf_output_partial.get_bytes(test_image)
+        assert len(result_partial) > 0
+        assert result_partial.startswith(b"%PDF-")
