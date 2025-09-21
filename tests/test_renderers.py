@@ -32,7 +32,7 @@ class TestColorUtils:
 
     def test_parse_color_to_rgba_invalid_color(self):
         """Test parsing invalid color falls back to white."""
-        with patch("molecular_string_renderer.renderers.logger") as mock_logger:
+        with patch("molecular_string_renderer.renderers.utils.logger") as mock_logger:
             rgba = ColorUtils.parse_color_to_rgba("invalid_color")
             assert rgba == (1.0, 1.0, 1.0, 1.0)
             mock_logger.warning.assert_called_once()
@@ -66,7 +66,7 @@ class TestDrawerConfigurationManager:
         manager = DrawerConfigurationManager(config)
         assert manager.config == config
 
-    @patch("molecular_string_renderer.renderers.rdMolDraw2D.MolDraw2DCairo")
+    @patch("rdkit.Chem.Draw.rdMolDraw2D.MolDraw2DCairo")
     def test_create_drawer(self, mock_drawer_class):
         """Test drawer creation."""
         config = RenderConfig(width=400, height=300)
@@ -80,7 +80,7 @@ class TestDrawerConfigurationManager:
         mock_drawer_class.assert_called_once_with(400, 300)
         assert drawer == mock_drawer
 
-    @patch("molecular_string_renderer.renderers.rdMolDraw2D.MolDraw2DCairo")
+    @patch("rdkit.Chem.Draw.rdMolDraw2D.MolDraw2DCairo")
     def test_configure_drawer_options_white_background(self, mock_drawer_class):
         """Test drawer configuration with white background."""
         config = RenderConfig(background_color="white", show_carbon=True)
@@ -97,8 +97,10 @@ class TestDrawerConfigurationManager:
         mock_options.setBackgroundColour.assert_not_called()
         assert mock_options.explicitMethyl
 
-    @patch("molecular_string_renderer.renderers.rdMolDraw2D.MolDraw2DCairo")
-    @patch("molecular_string_renderer.renderers.ColorUtils.parse_color_to_rgba")
+    @patch("rdkit.Chem.Draw.rdMolDraw2D.MolDraw2DCairo")
+    @patch(
+        "molecular_string_renderer.renderers.config_manager.ColorUtils.parse_color_to_rgba"
+    )
     def test_configure_drawer_options_colored_background(
         self, mock_parse_color, mock_drawer_class
     ):
@@ -141,8 +143,8 @@ class TestMolecularRenderer:
         with pytest.raises(ValueError, match="Cannot render None molecule"):
             renderer._prepare_molecule(None)
 
-    @patch("molecular_string_renderer.renderers.Chem.Mol")
-    @patch("molecular_string_renderer.renderers.rdDepictor.Compute2DCoords")
+    @patch("rdkit.Chem.Mol")
+    @patch("rdkit.Chem.rdDepictor.Compute2DCoords")
     def test_prepare_molecule_valid_input(self, mock_compute_coords, mock_mol):
         """Test molecule preparation with valid input."""
         renderer = Molecule2DRenderer()
@@ -164,10 +166,8 @@ class TestMolecularRenderer:
         renderer = Molecule2DRenderer()
         mol = Mock()
 
-        with patch("molecular_string_renderer.renderers.Chem.Mol") as mock_mol:
-            with patch(
-                "molecular_string_renderer.renderers.rdDepictor.Compute2DCoords"
-            ) as mock_compute:
+        with patch("rdkit.Chem.Mol") as mock_mol:
+            with patch("rdkit.Chem.rdDepictor.Compute2DCoords") as mock_compute:
                 mock_mol.return_value = Mock()
                 mock_compute.side_effect = Exception("Compute failed")
 
@@ -240,11 +240,13 @@ class TestMolecule2DRenderer:
         assert renderer.config == config
         assert isinstance(renderer._drawer_manager, DrawerConfigurationManager)
 
-    @patch("molecular_string_renderer.renderers.Molecule2DRenderer._prepare_molecule")
     @patch(
-        "molecular_string_renderer.renderers.DrawerConfigurationManager.create_drawer"
+        "molecular_string_renderer.renderers.two_dimensional.Molecule2DRenderer._prepare_molecule"
     )
-    @patch("molecular_string_renderer.renderers.Image.open")
+    @patch(
+        "molecular_string_renderer.renderers.config_manager.DrawerConfigurationManager.create_drawer"
+    )
+    @patch("PIL.Image.open")
     def test_render_success(self, mock_image_open, mock_create_drawer, mock_prepare):
         """Test successful molecule rendering."""
         renderer = Molecule2DRenderer()
@@ -301,9 +303,13 @@ class TestMolecule2DRenderer:
         with pytest.raises(ValueError):
             renderer.render_with_highlights(None)
 
-    @patch("molecular_string_renderer.renderers.Molecule2DRenderer._prepare_molecule")
-    @patch("molecular_string_renderer.renderers.DrawerConfigurationManager")
-    @patch("molecular_string_renderer.renderers.Image.open")
+    @patch(
+        "molecular_string_renderer.renderers.two_dimensional.Molecule2DRenderer._prepare_molecule"
+    )
+    @patch(
+        "molecular_string_renderer.renderers.config_manager.DrawerConfigurationManager"
+    )
+    @patch("PIL.Image.open")
     def test_render_with_highlights_success(
         self, mock_image_open, mock_manager_class, mock_prepare
     ):
@@ -378,8 +384,10 @@ class TestMoleculeGridRenderer:
         with pytest.raises(ValueError, match="Cannot render empty molecule list"):
             renderer.render_grid([])
 
-    @patch("molecular_string_renderer.renderers.MoleculeGridRenderer._prepare_molecule")
-    @patch("molecular_string_renderer.renderers.Draw.MolsToGridImage")
+    @patch(
+        "molecular_string_renderer.renderers.grid.MoleculeGridRenderer._prepare_molecule"
+    )
+    @patch("rdkit.Chem.Draw.MolsToGridImage")
     def test_render_grid_success(self, mock_grid_image, mock_prepare):
         """Test successful grid rendering."""
         renderer = MoleculeGridRenderer()
@@ -401,7 +409,9 @@ class TestMoleculeGridRenderer:
         )
         assert result == img
 
-    @patch("molecular_string_renderer.renderers.MoleculeGridRenderer._prepare_molecule")
+    @patch(
+        "molecular_string_renderer.renderers.grid.MoleculeGridRenderer._prepare_molecule"
+    )
     def test_render_grid_with_invalid_molecules(self, mock_prepare):
         """Test grid rendering with some invalid molecules."""
         renderer = MoleculeGridRenderer()
@@ -411,9 +421,7 @@ class TestMoleculeGridRenderer:
         valid_mol1, valid_mol2 = Mock(), Mock()
         mock_prepare.side_effect = [valid_mol1, Exception("Invalid"), valid_mol2]
 
-        with patch(
-            "molecular_string_renderer.renderers.Draw.MolsToGridImage"
-        ) as mock_grid:
+        with patch("rdkit.Chem.Draw.MolsToGridImage") as mock_grid:
             img = Mock()
             img.mode = "RGBA"
             mock_grid.return_value = img
@@ -438,8 +446,10 @@ class TestMoleculeGridRenderer:
         with pytest.raises(ValueError, match="No valid molecules found in input list"):
             renderer.render_grid(mols)
 
-    @patch("molecular_string_renderer.renderers.MoleculeGridRenderer._prepare_molecule")
-    @patch("molecular_string_renderer.renderers.Draw.MolsToGridImage")
+    @patch(
+        "molecular_string_renderer.renderers.grid.MoleculeGridRenderer._prepare_molecule"
+    )
+    @patch("rdkit.Chem.Draw.MolsToGridImage")
     def test_render_grid_with_legends_mismatch(self, mock_grid_image, mock_prepare):
         """Test grid rendering with mismatched legend count."""
         renderer = MoleculeGridRenderer()
@@ -510,7 +520,7 @@ class TestGetRenderer:
         assert isinstance(renderer1, Molecule2DRenderer)
         assert isinstance(renderer2, MoleculeGridRenderer)
 
-    @patch("molecular_string_renderer.renderers.Molecule2DRenderer")
+    @patch("molecular_string_renderer.renderers.factory.Molecule2DRenderer")
     def test_get_renderer_creation_failure(self, mock_renderer_class):
         """Test handling of renderer creation failure."""
         mock_renderer_class.side_effect = Exception("Creation failed")
