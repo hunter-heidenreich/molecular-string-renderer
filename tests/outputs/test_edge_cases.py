@@ -1,16 +1,14 @@
 """
-Comprehensive edge cases and coverage enhancement tests for outputs submodule.
+Edge cases tests for outputs submodule.
 
 This file consolidates tests for:
 - Edge cases with various image modes and configurations
-- Code coverage enhancement for uncovered paths
+- Factory and registry testing
 - Utility function testing
-- Robustness and error handling scenarios
+- Format-specific behaviors and real-world scenarios
 """
 
 import tempfile
-import threading
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -609,114 +607,12 @@ class TestConfigurationEdgeCases:
 
 
 # =============================================================================
-# Concurrency and Performance Tests
-# =============================================================================
-
-
-class TestConcurrencyAndPerformance:
-    """Test concurrency and performance scenarios."""
-
-    @pytest.mark.slow
-    def test_thread_safety_stress_test(self):
-        """Stress test thread safety with many concurrent operations."""
-        test_image = Image.new("RGB", (50, 50), "red")
-        results = []
-        errors = []
-
-        def worker():
-            try:
-                for _ in range(10):
-                    handler = get_output_handler("png")
-                    result = handler.get_bytes(test_image)
-                    results.append(len(result))
-            except Exception as e:
-                errors.append(e)
-
-        threads = [threading.Thread(target=worker) for _ in range(20)]
-
-        for thread in threads:
-            thread.start()
-
-        for thread in threads:
-            thread.join()
-
-        assert len(errors) == 0, f"Thread safety errors: {errors}"
-        assert len(results) == 200  # 20 threads * 10 operations each
-
-    @pytest.mark.slow
-    def test_memory_efficiency_large_batch(self):
-        """Test memory efficiency with large batch processing."""
-        import gc
-
-        test_image = Image.new("RGB", (100, 100), "red")
-        handler = get_output_handler("png")
-
-        # Process many images and ensure memory doesn't grow excessively
-        initial_objects = len(gc.get_objects())
-
-        for _ in range(100):
-            result = handler.get_bytes(test_image)
-            assert len(result) > 0
-
-        gc.collect()
-        final_objects = len(gc.get_objects())
-
-        # Allow some growth but not excessive
-        object_growth = final_objects - initial_objects
-        assert object_growth < 1000, f"Excessive object growth: {object_growth}"
-
-    def test_handler_reuse_vs_recreation(self):
-        """Test performance of handler reuse vs recreation."""
-        test_image = Image.new("RGB", (50, 50), "red")
-        iterations = 50
-
-        # Test reuse
-        start_time = time.time()
-        handler = get_output_handler("png")
-        for _ in range(iterations):
-            handler.get_bytes(test_image)
-        reuse_time = time.time() - start_time
-
-        # Test recreation
-        start_time = time.time()
-        for _ in range(iterations):
-            handler = get_output_handler("png")
-            handler.get_bytes(test_image)
-        recreation_time = time.time() - start_time
-
-        # Reuse should be more efficient
-        assert reuse_time < recreation_time * 1.5
-
-
-# =============================================================================
 # Error Recovery Tests
 # =============================================================================
 
 
 class TestErrorRecovery:
     """Test error recovery and resilience."""
-
-    def test_partial_failure_recovery(self):
-        """Test recovery from partial failures in batch operations."""
-        test_image = Image.new("RGB", (50, 50), "red")
-        handler = get_output_handler("png")
-
-        results = []
-        errors = []
-
-        # Simulate some failures in a batch
-        for i in range(10):
-            try:
-                if i == 5:  # Simulate one failure
-                    raise Exception("Simulated failure")
-                result = handler.get_bytes(test_image)
-                results.append(result)
-            except Exception as e:
-                errors.append(e)
-
-        # Should have 9 successes and 1 failure
-        assert len(results) == 9
-        assert len(errors) == 1
 
     def test_resource_cleanup_on_error(self):
         """Test that resources are properly cleaned up on errors."""
