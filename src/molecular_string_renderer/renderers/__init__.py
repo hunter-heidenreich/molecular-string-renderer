@@ -24,16 +24,16 @@ Example:
 # Base classes and abstractions
 from .base import MolecularRenderer
 
-# Concrete renderer implementations
-from .grid import MoleculeGridRenderer
-from .two_dimensional import Molecule2DRenderer
-
 # Utilities and configuration
 from .config_manager import DrawerConfigurationManager
-from .utils import ColorUtils
 
 # Factory functions
 from .factory import get_renderer
+
+# Concrete renderer implementations
+from .grid import MoleculeGridRenderer
+from .two_dimensional import Molecule2DRenderer
+from .utils import ColorUtils
 
 __all__ = [
     # Base classes

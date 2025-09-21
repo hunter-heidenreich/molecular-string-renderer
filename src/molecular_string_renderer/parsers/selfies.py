@@ -4,8 +4,8 @@ SELFIES parser implementation.
 Provides parsing functionality for SELFIES (Self-Referencing Embedded Strings) format.
 """
 
-from rdkit import Chem
 import selfies as sf
+from rdkit import Chem
 
 from molecular_string_renderer.parsers.base import MolecularParser
 

@@ -2,9 +2,10 @@
 Tests for the SELFIES parser implementation.
 """
 
+from unittest.mock import patch
+
 import pytest
 from rdkit import Chem
-from unittest.mock import patch
 
 from molecular_string_renderer.config import ParserConfig
 from molecular_string_renderer.parsers.selfies import SELFIESParser

@@ -2,12 +2,13 @@
 Tests for the MOL file parser implementation.
 """
 
-import pytest
-from pathlib import Path
-from rdkit import Chem
-import tempfile
 import os
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
+
+import pytest
+from rdkit import Chem
 
 from molecular_string_renderer.config import ParserConfig
 from molecular_string_renderer.parsers.mol import MOLFileParser

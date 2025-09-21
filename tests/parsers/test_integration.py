@@ -8,15 +8,15 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 
+from molecular_string_renderer.config import ParserConfig
 from molecular_string_renderer.parsers import (
-    MolecularParser,
-    SMILESParser,
     InChIParser,
+    MolecularParser,
     MOLFileParser,
     SELFIESParser,
+    SMILESParser,
     get_parser,
 )
-from molecular_string_renderer.config import ParserConfig
 
 
 class TestSubModuleImports:
@@ -206,21 +206,20 @@ class TestSubModuleStructure:
     def test_individual_modules_importable(self):
         """Test that individual sub-modules can be imported directly."""
         # These should all work without errors
+        # Verify these are the same objects as the main imports
+        from molecular_string_renderer.parsers import (
+            MolecularParser as MainMolecularParser,
+        )
+        from molecular_string_renderer.parsers import SMILESParser as MainSMILESParser
+        from molecular_string_renderer.parsers import get_parser as main_get_parser
         from molecular_string_renderer.parsers.base import (
             MolecularParser as BaseMolecularParser,
-        )
-        from molecular_string_renderer.parsers.smiles import (
-            SMILESParser as BaseSMILESParser,
         )
         from molecular_string_renderer.parsers.factory import (
             get_parser as base_get_parser,
         )
-
-        # Verify these are the same objects as the main imports
-        from molecular_string_renderer.parsers import (
-            MolecularParser as MainMolecularParser,
-            SMILESParser as MainSMILESParser,
-            get_parser as main_get_parser,
+        from molecular_string_renderer.parsers.smiles import (
+            SMILESParser as BaseSMILESParser,
         )
 
         assert BaseMolecularParser is MainMolecularParser

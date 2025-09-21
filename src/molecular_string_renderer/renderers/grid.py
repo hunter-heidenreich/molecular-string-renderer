@@ -12,6 +12,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 
 from molecular_string_renderer.config import RenderConfig
+
 from .base import MolecularRenderer
 
 logger = logging.getLogger(__name__)

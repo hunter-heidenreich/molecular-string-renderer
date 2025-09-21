@@ -5,10 +5,10 @@ Tests for the renderer factory functionality.
 import pytest
 
 from molecular_string_renderer.config import RenderConfig
-from molecular_string_renderer.renderers.factory import get_renderer
 from molecular_string_renderer.renderers.base import MolecularRenderer
-from molecular_string_renderer.renderers.two_dimensional import Molecule2DRenderer
+from molecular_string_renderer.renderers.factory import get_renderer
 from molecular_string_renderer.renderers.grid import MoleculeGridRenderer
+from molecular_string_renderer.renderers.two_dimensional import Molecule2DRenderer
 
 
 class TestGetRenderer:

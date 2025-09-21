@@ -8,15 +8,15 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem import rdDepictor
 
+from molecular_string_renderer.config import RenderConfig
 from molecular_string_renderer.renderers import (
+    ColorUtils,
+    DrawerConfigurationManager,
     MolecularRenderer,
     Molecule2DRenderer,
     MoleculeGridRenderer,
-    ColorUtils,
-    DrawerConfigurationManager,
     get_renderer,
 )
-from molecular_string_renderer.config import RenderConfig
 
 
 class TestSubModuleImports:
@@ -229,21 +229,24 @@ class TestSubModuleStructure:
     def test_individual_modules_importable(self):
         """Test that individual sub-modules can be imported directly."""
         # These should all work without errors
+        # Verify these are the same objects as the main imports
+        from molecular_string_renderer.renderers import (
+            MolecularRenderer as MainMolecularRenderer,
+        )
+        from molecular_string_renderer.renderers import (
+            Molecule2DRenderer as Main2DRenderer,
+        )
+        from molecular_string_renderer.renderers import (
+            get_renderer as main_get_renderer,
+        )
         from molecular_string_renderer.renderers.base import (
             MolecularRenderer as BaseMolecularRenderer,
-        )
-        from molecular_string_renderer.renderers.two_dimensional import (
-            Molecule2DRenderer as Base2DRenderer,
         )
         from molecular_string_renderer.renderers.factory import (
             get_renderer as base_get_renderer,
         )
-
-        # Verify these are the same objects as the main imports
-        from molecular_string_renderer.renderers import (
-            MolecularRenderer as MainMolecularRenderer,
-            Molecule2DRenderer as Main2DRenderer,
-            get_renderer as main_get_renderer,
+        from molecular_string_renderer.renderers.two_dimensional import (
+            Molecule2DRenderer as Base2DRenderer,
         )
 
         assert BaseMolecularRenderer is MainMolecularRenderer

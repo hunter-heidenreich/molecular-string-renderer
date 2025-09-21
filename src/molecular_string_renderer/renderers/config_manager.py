@@ -10,6 +10,7 @@ import logging
 from rdkit.Chem.Draw import rdMolDraw2D
 
 from molecular_string_renderer.config import RenderConfig
+
 from .utils import ColorUtils
 
 logger = logging.getLogger(__name__)

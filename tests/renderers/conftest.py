@@ -19,7 +19,6 @@ from molecular_string_renderer.renderers import (
     get_renderer,
 )
 
-
 # Renderer types and their corresponding classes
 RENDERER_TYPES = {
     "2d": Molecule2DRenderer,

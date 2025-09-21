@@ -8,6 +8,7 @@ renderer type based on user requirements.
 import logging
 
 from molecular_string_renderer.config import RenderConfig
+
 from .base import MolecularRenderer
 from .grid import MoleculeGridRenderer
 from .two_dimensional import Molecule2DRenderer

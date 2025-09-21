@@ -15,12 +15,12 @@ Example usage:
     >>> image.save("ethanol.png")
 """
 
-from molecular_string_renderer.config import RenderConfig, ParserConfig, OutputConfig
+from molecular_string_renderer.config import OutputConfig, ParserConfig, RenderConfig
 from molecular_string_renderer.core import (
+    MolecularRenderer,
     render_molecule,
     render_molecules_grid,
     validate_molecular_string,
-    MolecularRenderer,
 )
 from molecular_string_renderer.outputs import PNGOutput, SVGOutput
 from molecular_string_renderer.parsers import SMILESParser

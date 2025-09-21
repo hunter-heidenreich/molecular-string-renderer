@@ -12,6 +12,7 @@ from PIL import Image
 from rdkit import Chem
 
 from molecular_string_renderer.config import RenderConfig
+
 from .base import MolecularRenderer
 from .config_manager import DrawerConfigurationManager
 

@@ -5,12 +5,12 @@ Tests for the parser factory functionality.
 import pytest
 
 from molecular_string_renderer.config import ParserConfig
-from molecular_string_renderer.parsers.factory import get_parser
 from molecular_string_renderer.parsers.base import MolecularParser
-from molecular_string_renderer.parsers.smiles import SMILESParser
+from molecular_string_renderer.parsers.factory import get_parser
 from molecular_string_renderer.parsers.inchi import InChIParser
 from molecular_string_renderer.parsers.mol import MOLFileParser
 from molecular_string_renderer.parsers.selfies import SELFIESParser
+from molecular_string_renderer.parsers.smiles import SMILESParser
 
 
 class TestGetParser:

@@ -9,11 +9,11 @@ from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
+from rdkit import Chem
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
-from rdkit import Chem
 
 from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs.base import VectorOutputHandler
