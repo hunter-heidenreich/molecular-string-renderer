@@ -285,7 +285,6 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
         width=width,
         height=height,
         background_color=args.background_color,
-        dpi=args.dpi,
         show_hydrogen=args.show_hydrogen,
         show_carbon=args.show_carbon,
     )

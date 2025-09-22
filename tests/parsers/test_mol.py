@@ -297,7 +297,7 @@ class TestMOLFilePostProcessing:
 
     def test_parse_with_hydrogen_removal(self):
         """Test parsing with hydrogen removal enabled."""
-        config = ParserConfig(remove_hs=True)
+        config = ParserConfig(show_hydrogen=False)
         parser = MOLFileParser(config)
 
         mol_block = """
@@ -317,7 +317,7 @@ M  END
 
     def test_parse_with_hydrogen_addition(self):
         """Test parsing with hydrogen addition enabled."""
-        config = ParserConfig(remove_hs=False)
+        config = ParserConfig(show_hydrogen=True)
         parser = MOLFileParser(config)
 
         mol_block = """

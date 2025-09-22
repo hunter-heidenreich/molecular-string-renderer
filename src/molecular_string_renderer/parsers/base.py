@@ -59,7 +59,7 @@ class MolecularParser(ABC):
                 # Always be strict
                 raise ValueError(f"Molecule sanitization failed: {e}")
 
-        if self.config.remove_hs:
+        if not self.config.show_hydrogen:
             mol = Chem.RemoveHs(mol)
         else:
             # If we're keeping hydrogens, ensure they are explicit

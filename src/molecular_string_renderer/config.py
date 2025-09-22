@@ -103,8 +103,7 @@ class ParserConfig(BaseModel):
 
     Attributes:
         sanitize: Sanitize molecule after parsing to fix common issues.
-        show_hydrogen: Show explicit hydrogen atoms (determines if hydrogens are removed).
-        remove_hs: Remove explicit hydrogens (inverse of show_hydrogen).
+        show_hydrogen: Show explicit hydrogen atoms.
         strict: Use strict parsing mode.
     """
 
@@ -114,29 +113,6 @@ class ParserConfig(BaseModel):
         default=False, description="Show explicit hydrogen atoms"
     )
     strict: bool = Field(default=False, description="Use strict parsing mode")
-
-    def __init__(self, **data):
-        """Initialize ParserConfig with support for both show_hydrogen and remove_hs."""
-        # Handle the case where remove_hs is provided instead of show_hydrogen
-        if "remove_hs" in data and "show_hydrogen" not in data:
-            data["show_hydrogen"] = not data.pop("remove_hs")
-        elif "remove_hs" in data and "show_hydrogen" in data:
-            # If both are provided, remove_hs takes precedence to avoid conflicts
-            data["show_hydrogen"] = not data.pop("remove_hs")
-        elif "remove_hs" in data:
-            # Remove remove_hs if show_hydrogen is also present
-            data.pop("remove_hs")
-
-        super().__init__(**data)
-
-    @property
-    def remove_hs(self) -> bool:
-        """Remove explicit hydrogens (inverse of show_hydrogen).
-
-        Returns:
-            True if hydrogens should be removed, False otherwise.
-        """
-        return not self.show_hydrogen
 
 
 class OutputConfig(BaseModel):

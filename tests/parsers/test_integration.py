@@ -114,13 +114,13 @@ class TestSubModuleFunctionality:
 
     def test_configuration_propagation(self):
         """Test that configuration is properly propagated through sub-module."""
-        custom_config = ParserConfig(sanitize=False, remove_hs=False)
+        custom_config = ParserConfig(sanitize=False, show_hydrogen=True)
 
         # Test with factory
         parser = get_parser("smiles", custom_config)
         assert parser.config is custom_config
         assert parser.config.sanitize is False
-        assert parser.config.remove_hs is False
+        assert parser.config.show_hydrogen is True
 
         # Test direct instantiation
         direct_parser = SMILESParser(custom_config)

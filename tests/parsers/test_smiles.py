@@ -189,7 +189,7 @@ class TestSMILESPostProcessing:
 
     def test_parse_with_hydrogen_removal(self):
         """Test parsing with hydrogen removal enabled."""
-        config = ParserConfig(remove_hs=True)
+        config = ParserConfig(show_hydrogen=False)
         parser = SMILESParser(config)
 
         mol = parser.parse("CCO")
@@ -201,7 +201,7 @@ class TestSMILESPostProcessing:
 
     def test_parse_with_hydrogen_addition(self):
         """Test parsing with hydrogen addition enabled."""
-        config = ParserConfig(remove_hs=False)
+        config = ParserConfig(show_hydrogen=True)
         parser = SMILESParser(config)
 
         mol = parser.parse("C")  # Methane
@@ -337,11 +337,11 @@ class TestSMILESEdgeCases:
     def test_hydrogen_handling_with_explicit_hydrogens(self):
         """Test hydrogen handling with molecules that have explicit hydrogens."""
         # Test with hydrogen removal
-        config_remove = ParserConfig(remove_hs=True)
+        config_remove = ParserConfig(show_hydrogen=False)
         parser_remove = SMILESParser(config_remove)
 
         # Test with hydrogen addition
-        config_add = ParserConfig(remove_hs=False)
+        config_add = ParserConfig(show_hydrogen=True)
         parser_add = SMILESParser(config_add)
 
         # SMILES with explicit hydrogens

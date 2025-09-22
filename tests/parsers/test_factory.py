@@ -131,16 +131,16 @@ class TestGetParserWithConfig:
         assert isinstance(parser.config, ParserConfig)
         # Should use default values
         assert parser.config.sanitize is True
-        assert parser.config.remove_hs is True
+        assert parser.config.show_hydrogen is False
 
     def test_get_parser_with_custom_config(self):
         """Test getting parser with custom config."""
-        custom_config = ParserConfig(sanitize=False, remove_hs=False)
+        custom_config = ParserConfig(sanitize=False, show_hydrogen=True)
         parser = get_parser("smiles", custom_config)
 
         assert parser.config is custom_config
         assert parser.config.sanitize is False
-        assert parser.config.remove_hs is False
+        assert parser.config.show_hydrogen is True
 
     def test_get_parser_with_none_config(self):
         """Test getting parser with None config (should use default)."""

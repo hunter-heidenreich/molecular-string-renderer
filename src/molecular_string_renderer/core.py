@@ -38,10 +38,11 @@ def _initialize_configurations(
     output_config = output_config or OutputConfig(format=output_format)
 
     # Auto-coordinate hydrogen display settings
-    if render_config.show_hydrogen and parser_config.remove_hs:
+    if render_config.show_hydrogen and not parser_config.show_hydrogen:
         parser_config = ParserConfig(
             sanitize=parser_config.sanitize,
             show_hydrogen=True,  # Keep hydrogens for display
+            strict=parser_config.strict,
         )
 
     return render_config, parser_config, output_config

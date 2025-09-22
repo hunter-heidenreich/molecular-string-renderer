@@ -50,11 +50,11 @@ class TestMolecularParserBase:
 
     def test_custom_config_initialization(self):
         """Test parser initializes with provided config."""
-        custom_config = ParserConfig(sanitize=False, remove_hs=False)
+        custom_config = ParserConfig(sanitize=False, show_hydrogen=True)
         parser = MockParser(custom_config)
         assert parser.config is custom_config
         assert not parser.config.sanitize
-        assert not parser.config.remove_hs
+        assert parser.config.show_hydrogen
 
 
 class TestPostProcessing:
@@ -68,7 +68,7 @@ class TestPostProcessing:
 
     def test_post_process_with_sanitization(self):
         """Test post-processing with sanitization enabled."""
-        config = ParserConfig(sanitize=True, remove_hs=True)
+        config = ParserConfig(sanitize=True, show_hydrogen=False)
         parser = MockParser(config)
 
         # Create a molecule that needs sanitization
@@ -80,7 +80,7 @@ class TestPostProcessing:
 
     def test_post_process_remove_hydrogens(self):
         """Test post-processing removes hydrogens when configured."""
-        config = ParserConfig(sanitize=True, remove_hs=True)
+        config = ParserConfig(sanitize=True, show_hydrogen=False)
         parser = MockParser(config)
 
         # Create molecule with explicit hydrogens
@@ -94,7 +94,7 @@ class TestPostProcessing:
 
     def test_post_process_keep_hydrogens(self):
         """Test post-processing keeps hydrogens when configured."""
-        config = ParserConfig(sanitize=True, remove_hs=False)
+        config = ParserConfig(sanitize=True, show_hydrogen=True)
         parser = MockParser(config)
 
         # Create molecule without explicit hydrogens
@@ -137,7 +137,7 @@ class TestPostProcessing:
 
     def test_post_process_without_sanitization(self):
         """Test post-processing without sanitization."""
-        config = ParserConfig(sanitize=False, remove_hs=True)
+        config = ParserConfig(sanitize=False, show_hydrogen=False)
         parser = MockParser(config)
 
         mol = Chem.MolFromSmiles("c1ccccc1")
@@ -182,7 +182,7 @@ class TestConfigurationEdgeCases:
     def test_sanitization_with_problematic_molecule(self):
         """Test sanitization with molecules that might cause issues."""
         # Create a parser with sanitization enabled
-        config = ParserConfig(sanitize=True, remove_hs=True)
+        config = ParserConfig(sanitize=True, show_hydrogen=False)
         parser = MockParser(config)
 
         # Parse a molecule that should sanitize fine
