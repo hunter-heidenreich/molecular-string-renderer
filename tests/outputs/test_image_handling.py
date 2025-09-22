@@ -13,9 +13,9 @@ All tests use conftest fixtures for consistency and maintainability.
 """
 
 from .conftest import (
-    assert_valid_bytes_output,
+    TestValidators,
     create_test_image_with_mode,
-    get_format_capabilities,
+    FormatCapabilities,
 )
 
 
@@ -31,7 +31,7 @@ class TestOutputHandlerImageModeHandling:
         result = output_handler.get_bytes(test_image)
 
         # Assert
-        assert_valid_bytes_output(result, "RGB image processing")
+        TestValidators.assert_valid_bytes_output(result, "RGB image processing")
 
     def test_rgba_image_handling(self, output_handler, rgba_image, format_name):
         """Test RGBA image handling with transparency."""
@@ -45,10 +45,10 @@ class TestOutputHandlerImageModeHandling:
         result = output_handler.get_bytes(rgba_image)
 
         # Assert
-        assert_valid_bytes_output(result, "RGBA image processing")
+        TestValidators.assert_valid_bytes_output(result, "RGBA image processing")
 
         # Verify format capabilities are respected
-        capabilities = get_format_capabilities(format_name)
+        capabilities = FormatCapabilities.get(format_name)
         if not capabilities.get("supports_alpha", False):
             # Format doesn't support transparency - conversion should occur
             assert len(result) > 0, "Non-alpha format should still produce valid output"
@@ -62,7 +62,7 @@ class TestOutputHandlerImageModeHandling:
         result = output_handler.get_bytes(grayscale_image)
 
         # Assert
-        assert_valid_bytes_output(result, "Grayscale image processing")
+        TestValidators.assert_valid_bytes_output(result, "Grayscale image processing")
 
     def test_la_image_handling(self, output_handler, la_image):
         """Test grayscale+alpha image handling."""
@@ -73,7 +73,7 @@ class TestOutputHandlerImageModeHandling:
         result = output_handler.get_bytes(la_image)
 
         # Assert
-        assert_valid_bytes_output(result, "LA image processing")
+        TestValidators.assert_valid_bytes_output(result, "LA image processing")
 
     def test_palette_mode_handling(self, output_handler):
         """Test handling of palette mode images."""
@@ -84,7 +84,7 @@ class TestOutputHandlerImageModeHandling:
         result = output_handler.get_bytes(palette_image)
 
         # Assert
-        assert_valid_bytes_output(result, "Palette mode image processing")
+        TestValidators.assert_valid_bytes_output(result, "Palette mode image processing")
 
     def test_parametrized_image_modes_from_conftest(self, output_handler, varied_image):
         """Test with various image modes using conftest parametrized fixture."""
@@ -92,7 +92,7 @@ class TestOutputHandlerImageModeHandling:
         result = output_handler.get_bytes(varied_image)
 
         # Assert
-        assert_valid_bytes_output(result, f"{varied_image.mode} mode processing")
+        TestValidators.assert_valid_bytes_output(result, f"{varied_image.mode} mode processing")
 
 
 class TestOutputHandlerEdgeCases:
@@ -104,7 +104,7 @@ class TestOutputHandlerEdgeCases:
         result = output_handler.get_bytes(small_image)
 
         # Assert
-        assert_valid_bytes_output(result, "Small image processing")
+        TestValidators.assert_valid_bytes_output(result, "Small image processing")
 
     def test_large_image_dimensions(self, output_handler, large_image, format_name):
         """Test with large images using conftest fixture."""
@@ -112,7 +112,7 @@ class TestOutputHandlerEdgeCases:
         result = output_handler.get_bytes(large_image)
 
         # Assert
-        assert_valid_bytes_output(result, "Large image processing")
+        TestValidators.assert_valid_bytes_output(result, "Large image processing")
 
         # Use reasonable size expectations for large images
         min_expected_size = 40 if format_name.lower() == "webp" else 500
@@ -132,8 +132,8 @@ class TestOutputHandlerEdgeCases:
         tall_result = output_handler.get_bytes(very_tall)
 
         # Assert
-        assert_valid_bytes_output(wide_result, "Very wide image processing")
-        assert_valid_bytes_output(tall_result, "Very tall image processing")
+        TestValidators.assert_valid_bytes_output(wide_result, "Very wide image processing")
+        TestValidators.assert_valid_bytes_output(tall_result, "Very tall image processing")
 
     def test_parametrized_dimensions(self, output_handler, image_dimensions):
         """Test various image dimensions using conftest parametrized fixture."""
@@ -144,13 +144,13 @@ class TestOutputHandlerEdgeCases:
         result = output_handler.get_bytes(test_image)
 
         # Assert
-        assert_valid_bytes_output(result, f"Image {image_dimensions} processing")
+        TestValidators.assert_valid_bytes_output(result, f"Image {image_dimensions} processing")
 
     def test_edge_case_dimensions(self, output_handler, edge_case_dimensions):
         """Test edge case dimensions using conftest parametrized fixture."""
         test_image = create_test_image_with_mode("RGB", edge_case_dimensions)
         result = output_handler.get_bytes(test_image)
-        assert_valid_bytes_output(
+        TestValidators.assert_valid_bytes_output(
             result, f"Edge case {edge_case_dimensions} processing"
         )
 
@@ -165,4 +165,4 @@ class TestOutputHandlerEdgeCases:
             ("tall", tall_image),
         ]:
             result = output_handler.get_bytes(img)
-            assert_valid_bytes_output(result, f"{name} image fixture processing")
+            TestValidators.assert_valid_bytes_output(result, f"{name} image fixture processing")
