@@ -17,7 +17,13 @@ Example usage:
 
 from molecular_string_renderer.config import OutputConfig, ParserConfig, RenderConfig
 from molecular_string_renderer.core import (
+    ConfigurationError,
     MolecularRenderer,
+    MolecularRenderingError,
+    OutputError,
+    ParsingError,
+    RenderingError,
+    ValidationError,
     render_molecule,
     render_molecules_grid,
     validate_molecular_string,
@@ -41,4 +47,11 @@ __all__ = [
     "RenderConfig",
     "ParserConfig",
     "OutputConfig",
+    # Exception types
+    "MolecularRenderingError",
+    "ValidationError",
+    "ParsingError",
+    "RenderingError",
+    "OutputError",
+    "ConfigurationError",
 ]
