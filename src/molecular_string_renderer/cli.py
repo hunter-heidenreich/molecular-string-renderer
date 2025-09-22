@@ -18,28 +18,12 @@ from molecular_string_renderer.core import (
     render_molecules_grid,
     validate_molecular_string,
 )
+from molecular_string_renderer.exceptions import (
+    CLIConfigurationError,
+    CLIError,
+    CLIValidationError,
+)
 from molecular_string_renderer.outputs.utils import create_safe_filename
-
-
-class CLIError(Exception):
-    """Base exception for CLI-related errors."""
-
-    def __init__(self, message: str, exit_code: int = 1):
-        self.message = message
-        self.exit_code = exit_code
-        super().__init__(message)
-
-
-class ValidationError(CLIError):
-    """Exception raised when input validation fails."""
-
-    pass
-
-
-class ConfigurationError(CLIError):
-    """Exception raised when configuration is invalid."""
-
-    pass
 
 
 # Set up logging
@@ -56,20 +40,20 @@ def validate_input_arguments(args) -> None:
         ValidationError: If arguments are invalid or inconsistent.
     """
     if args.validate and not args.molecular_string:
-        raise ValidationError("--validate requires a molecular string argument")
+        raise CLIValidationError("--validate requires a molecular string argument")
 
     if not args.grid and not args.molecular_string and not args.list_formats:
-        raise ValidationError("No action specified. Use --help for usage information.")
+        raise CLIValidationError("No action specified. Use --help for usage information.")
 
     # Validate grid-specific arguments
     if args.grid and args.molecular_string:
-        raise ValidationError(
+        raise CLIValidationError(
             "Cannot specify both --grid and individual molecular string"
         )
 
     # Validate legends only make sense with grid
     if args.legends and not args.grid:
-        raise ValidationError("--legends can only be used with --grid")
+        raise CLIValidationError("--legends can only be used with --grid")
 
 
 def validate_molecular_input(molecular_string: str, format_type: str) -> None:
@@ -83,7 +67,7 @@ def validate_molecular_input(molecular_string: str, format_type: str) -> None:
         ValidationError: If the molecular string is invalid with helpful message.
     """
     if not molecular_string or not molecular_string.strip():
-        raise ValidationError(f"Empty {format_type.upper()} string provided")
+        raise CLIValidationError(f"Empty {format_type.upper()} string provided")
 
     # Basic format-specific validation hints
     format_hints = {
@@ -97,12 +81,12 @@ def validate_molecular_input(molecular_string: str, format_type: str) -> None:
         is_valid = validate_molecular_string(molecular_string.strip(), format_type)
         if not is_valid:
             hint = format_hints.get(format_type.lower(), "")
-            raise ValidationError(
+            raise CLIValidationError(
                 f"Invalid {format_type.upper()}: '{molecular_string}'. {hint}"
             )
     except Exception as e:
         hint = format_hints.get(format_type.lower(), "")
-        raise ValidationError(
+        raise CLIValidationError(
             f"Failed to validate {format_type.upper()}: '{molecular_string}'. {hint}\nError: {e}"
         ) from e
 
@@ -401,19 +385,19 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
 
     # Validate dimensions
     if width < 100 or width > 2000:
-        raise ConfigurationError(f"Width must be between 100-2000 pixels, got {width}")
+        raise CLIConfigurationError(f"Width must be between 100-2000 pixels, got {width}")
     if height < 100 or height > 2000:
-        raise ConfigurationError(
+        raise CLIConfigurationError(
             f"Height must be between 100-2000 pixels, got {height}"
         )
 
     # Validate DPI
     if args.dpi < 72 or args.dpi > 600:
-        raise ConfigurationError(f"DPI must be between 72-600, got {args.dpi}")
+        raise CLIConfigurationError(f"DPI must be between 72-600, got {args.dpi}")
 
     # Validate quality
     if args.quality < 1 or args.quality > 100:
-        raise ConfigurationError(f"Quality must be between 1-100, got {args.quality}")
+        raise CLIConfigurationError(f"Quality must be between 1-100, got {args.quality}")
 
     try:
         render_config = RenderConfig(
@@ -438,7 +422,7 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
             dpi=args.dpi,
         )
     except Exception as e:
-        raise ConfigurationError(f"Failed to create configuration: {e}") from e
+        raise CLIConfigurationError(f"Failed to create configuration: {e}") from e
 
     return render_config, parser_config, output_config
 
@@ -456,7 +440,7 @@ def handle_grid_rendering(args, render_config, parser_config, output_config) -> 
         ValidationError: If grid input is invalid.
     """
     if not args.grid:
-        raise ValidationError(
+        raise CLIValidationError(
             "--grid requires a comma-separated list of molecular strings"
         )
 
@@ -464,7 +448,7 @@ def handle_grid_rendering(args, render_config, parser_config, output_config) -> 
     molecular_strings = [s.strip() for s in args.grid.split(",") if s.strip()]
 
     if not molecular_strings:
-        raise ValidationError("No valid molecular strings found in grid input")
+        raise CLIValidationError("No valid molecular strings found in grid input")
 
     # Parse legends if provided
     legends = None
@@ -522,7 +506,7 @@ def handle_single_rendering(args, render_config, parser_config, output_config) -
         CLIError: If rendering fails.
     """
     if not args.molecular_string:
-        raise ValidationError(
+        raise CLIValidationError(
             "Molecular string is required for single molecule rendering"
         )
 
@@ -542,7 +526,7 @@ def handle_single_rendering(args, render_config, parser_config, output_config) -
             return
         else:
             print(f"✗ Invalid {args.input_format.upper()}: {args.molecular_string}")
-            raise ValidationError(
+            raise CLIValidationError(
                 f"Invalid {args.input_format.upper()}: {args.molecular_string}"
             )
 
@@ -616,12 +600,12 @@ def main() -> None:
     except CLIError as e:
         logger.error(e.message)
         sys.exit(e.exit_code)
-    except ValidationError as e:
+    except CLIValidationError as e:
         logger.error(e.message)
         if not args.validate:
             logger.error("Use --help for usage information")
         sys.exit(e.exit_code)
-    except ConfigurationError as e:
+    except CLIConfigurationError as e:
         logger.error(e.message)
         sys.exit(e.exit_code)
     except Exception as e:

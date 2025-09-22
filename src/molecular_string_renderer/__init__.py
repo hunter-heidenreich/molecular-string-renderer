@@ -17,16 +17,18 @@ Example usage:
 
 from molecular_string_renderer.config import OutputConfig, ParserConfig, RenderConfig
 from molecular_string_renderer.core import (
-    ConfigurationError,
     MolecularRenderer,
+    render_molecule,
+    render_molecules_grid,
+    validate_molecular_string,
+)
+from molecular_string_renderer.exceptions import (
+    ConfigurationError,
     MolecularRenderingError,
     OutputError,
     ParsingError,
     RenderingError,
     ValidationError,
-    render_molecule,
-    render_molecules_grid,
-    validate_molecular_string,
 )
 from molecular_string_renderer.outputs import PNGOutput, SVGOutput
 from molecular_string_renderer.parsers import SMILESParser
