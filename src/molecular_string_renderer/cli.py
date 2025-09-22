@@ -18,9 +18,125 @@ from molecular_string_renderer.core import (
     render_molecules_grid,
     validate_molecular_string,
 )
+from molecular_string_renderer.outputs.utils import create_safe_filename
+
+
+class CLIError(Exception):
+    """Base exception for CLI-related errors."""
+
+    def __init__(self, message: str, exit_code: int = 1):
+        self.message = message
+        self.exit_code = exit_code
+        super().__init__(message)
+
+
+class ValidationError(CLIError):
+    """Exception raised when input validation fails."""
+
+    pass
+
+
+class ConfigurationError(CLIError):
+    """Exception raised when configuration is invalid."""
+
+    pass
+
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+
+def validate_input_arguments(args) -> None:
+    """Validate command-line arguments for consistency and completeness.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Raises:
+        ValidationError: If arguments are invalid or inconsistent.
+    """
+    if args.validate and not args.molecular_string:
+        raise ValidationError("--validate requires a molecular string argument")
+
+    if not args.grid and not args.molecular_string and not args.list_formats:
+        raise ValidationError("No action specified. Use --help for usage information.")
+
+    # Validate grid-specific arguments
+    if args.grid and args.molecular_string:
+        raise ValidationError(
+            "Cannot specify both --grid and individual molecular string"
+        )
+
+    # Validate legends only make sense with grid
+    if args.legends and not args.grid:
+        raise ValidationError("--legends can only be used with --grid")
+
+
+def validate_molecular_input(molecular_string: str, format_type: str) -> None:
+    """Validate and provide helpful feedback for molecular string input.
+
+    Args:
+        molecular_string: The molecular string to validate.
+        format_type: The format type to validate against.
+
+    Raises:
+        ValidationError: If the molecular string is invalid with helpful message.
+    """
+    if not molecular_string or not molecular_string.strip():
+        raise ValidationError(f"Empty {format_type.upper()} string provided")
+
+    # Basic format-specific validation hints
+    format_hints = {
+        "smiles": "SMILES should contain atoms (C, N, O, etc.) and bonds. Example: 'CCO' for ethanol",
+        "inchi": "InChI should start with 'InChI=' and contain a valid identifier",
+        "selfies": "SELFIES should contain bracketed tokens. Example: '[C][C][O]' for ethanol",
+        "mol": "MOL format should contain a complete molecule structure block",
+    }
+
+    try:
+        is_valid = validate_molecular_string(molecular_string.strip(), format_type)
+        if not is_valid:
+            hint = format_hints.get(format_type.lower(), "")
+            raise ValidationError(
+                f"Invalid {format_type.upper()}: '{molecular_string}'. {hint}"
+            )
+    except Exception as e:
+        hint = format_hints.get(format_type.lower(), "")
+        raise ValidationError(
+            f"Failed to validate {format_type.upper()}: '{molecular_string}'. {hint}\nError: {e}"
+        ) from e
+
+
+def log_rendering_info(
+    input_string: str,
+    input_format: str,
+    output_config: OutputConfig,
+    render_config: RenderConfig | None = None,
+    molecule_count: int | None = None,
+    mols_per_row: int | None = None,
+) -> None:
+    """Log rendering configuration information.
+
+    Args:
+        input_string: Input molecular string or description.
+        input_format: Input format type.
+        output_config: Output configuration.
+        render_config: Optional render configuration for dimensions.
+        molecule_count: Number of molecules (for grid rendering).
+        mols_per_row: Molecules per row (for grid rendering).
+    """
+    if molecule_count:
+        logger.info(f"Rendering grid with {molecule_count} molecules")
+        if mols_per_row:
+            logger.info(f"Molecules per row: {mols_per_row}")
+    else:
+        logger.info(f"Input: {input_string}")
+
+    logger.info(f"Input format: {input_format}")
+    logger.info(f"Output format: {output_config.format}")
+
+    if render_config:
+        logger.info(f"Image size: {render_config.width}x{render_config.height}")
 
 
 def normalize_format(value: str) -> str:
@@ -275,33 +391,54 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
 
     Returns:
         A tuple containing (render_config, parser_config, output_config).
-    """
 
+    Raises:
+        ConfigurationError: If configuration values are invalid.
+    """
     # Determine image dimensions
     width = args.width or args.size
     height = args.height or args.size
 
-    render_config = RenderConfig(
-        width=width,
-        height=height,
-        background_color=args.background_color,
-        show_hydrogen=args.show_hydrogen,
-        show_carbon=args.show_carbon,
-    )
+    # Validate dimensions
+    if width < 100 or width > 2000:
+        raise ConfigurationError(f"Width must be between 100-2000 pixels, got {width}")
+    if height < 100 or height > 2000:
+        raise ConfigurationError(
+            f"Height must be between 100-2000 pixels, got {height}"
+        )
 
-    parser_config = ParserConfig(
-        sanitize=True,
-        show_hydrogen=args.show_hydrogen,
-    )
+    # Validate DPI
+    if args.dpi < 72 or args.dpi > 600:
+        raise ConfigurationError(f"DPI must be between 72-600, got {args.dpi}")
 
-    output_format = determine_output_format(args.output, args.output_format)
+    # Validate quality
+    if args.quality < 1 or args.quality > 100:
+        raise ConfigurationError(f"Quality must be between 1-100, got {args.quality}")
 
-    output_config = OutputConfig(
-        format=output_format,
-        quality=args.quality,
-        optimize=not args.no_optimize,
-        dpi=args.dpi,  # Use DPI from CLI args
-    )
+    try:
+        render_config = RenderConfig(
+            width=width,
+            height=height,
+            background_color=args.background_color,
+            show_hydrogen=args.show_hydrogen,
+            show_carbon=args.show_carbon,
+        )
+
+        parser_config = ParserConfig(
+            sanitize=True,
+            show_hydrogen=args.show_hydrogen,
+        )
+
+        output_format = determine_output_format(args.output, args.output_format)
+
+        output_config = OutputConfig(
+            format=output_format,
+            quality=args.quality,
+            optimize=not args.no_optimize,
+            dpi=args.dpi,
+        )
+    except Exception as e:
+        raise ConfigurationError(f"Failed to create configuration: {e}") from e
 
     return render_config, parser_config, output_config
 
@@ -314,18 +451,20 @@ def handle_grid_rendering(args, render_config, parser_config, output_config) -> 
         render_config: Rendering configuration.
         parser_config: Parser configuration.
         output_config: Output configuration.
-    """
 
+    Raises:
+        ValidationError: If grid input is invalid.
+    """
     if not args.grid:
-        logger.error("--grid requires a comma-separated list of molecular strings")
-        sys.exit(1)
+        raise ValidationError(
+            "--grid requires a comma-separated list of molecular strings"
+        )
 
     # Parse grid input
     molecular_strings = [s.strip() for s in args.grid.split(",") if s.strip()]
 
     if not molecular_strings:
-        logger.error("No valid molecular strings found in grid input")
-        sys.exit(1)
+        raise ValidationError("No valid molecular strings found in grid input")
 
     # Parse legends if provided
     legends = None
@@ -338,10 +477,13 @@ def handle_grid_rendering(args, render_config, parser_config, output_config) -> 
             legends = None
 
     if args.verbose:
-        logger.info(f"Rendering grid with {len(molecular_strings)} molecules")
-        logger.info(f"Input format: {args.input_format}")
-        logger.info(f"Output format: {output_config.format}")
-        logger.info(f"Molecules per row: {args.mols_per_row}")
+        log_rendering_info(
+            input_string="grid input",
+            input_format=args.input_format,
+            output_config=output_config,
+            molecule_count=len(molecular_strings),
+            mols_per_row=args.mols_per_row,
+        )
 
     try:
         render_molecules_grid(
@@ -363,8 +505,7 @@ def handle_grid_rendering(args, render_config, parser_config, output_config) -> 
             logger.info("Grid rendered successfully (no output file specified)")
 
     except Exception as e:
-        logger.error(f"Error rendering grid: {e}")
-        sys.exit(1)
+        raise CLIError(f"Error rendering grid: {e}") from e
 
 
 def handle_single_rendering(args, render_config, parser_config, output_config) -> None:
@@ -375,28 +516,35 @@ def handle_single_rendering(args, render_config, parser_config, output_config) -
         render_config: Rendering configuration.
         parser_config: Parser configuration.
         output_config: Output configuration.
-    """
 
+    Raises:
+        ValidationError: If molecular string is missing.
+        CLIError: If rendering fails.
+    """
     if not args.molecular_string:
-        logger.error("Molecular string is required for single molecule rendering")
-        logger.error("Use --help for usage information")
-        sys.exit(1)
+        raise ValidationError(
+            "Molecular string is required for single molecule rendering"
+        )
 
     if args.verbose:
-        logger.info(f"Input: {args.molecular_string}")
-        logger.info(f"Input format: {args.input_format}")
-        logger.info(f"Output format: {output_config.format}")
-        logger.info(f"Image size: {render_config.width}x{render_config.height}")
+        log_rendering_info(
+            input_string=args.molecular_string,
+            input_format=args.input_format,
+            output_config=output_config,
+            render_config=render_config,
+        )
 
     # Validate input if requested
     if args.validate:
         is_valid = validate_molecular_string(args.molecular_string, args.input_format)
         if is_valid:
             print(f"✓ Valid {args.input_format.upper()}: {args.molecular_string}")
-            sys.exit(0)
+            return
         else:
             print(f"✗ Invalid {args.input_format.upper()}: {args.molecular_string}")
-            sys.exit(1)
+            raise ValidationError(
+                f"Invalid {args.input_format.upper()}: {args.molecular_string}"
+            )
 
     try:
         render_molecule(
@@ -411,17 +559,15 @@ def handle_single_rendering(args, render_config, parser_config, output_config) -
         )
 
         if args.output or args.auto_filename:
-            output_file = (
-                args.output
-                or f"molecule_{hash(args.molecular_string) % 100000}.{output_config.format}"
+            output_file = args.output or create_safe_filename(
+                args.molecular_string, f".{output_config.format}"
             )
             logger.info(f"Image successfully saved to: {output_file}")
         else:
             logger.info("Molecule rendered successfully (no output file specified)")
 
     except Exception as e:
-        logger.error(f"Error: {e}")
-        sys.exit(1)
+        raise CLIError(f"Error rendering molecule: {e}") from e
 
 
 def main() -> None:
@@ -430,7 +576,6 @@ def main() -> None:
     Parses command-line arguments, configures logging, and routes to the
     appropriate rendering handler based on the provided arguments.
     """
-
     parser = create_parser()
     args = parser.parse_args()
 
@@ -440,35 +585,52 @@ def main() -> None:
         format="%(levelname)s: %(message)s",
     )
 
-    # Handle utility options first
-    if args.list_formats:
-        formats = get_supported_formats()
-        print("Supported formats:")
-        print("\nInput formats:")
-        for fmt, desc in formats["input_formats"].items():
-            print(f"  {fmt:8} - {desc}")
-        print("\nOutput formats:")
-        for fmt, desc in formats["output_formats"].items():
-            print(f"  {fmt:8} - {desc}")
-        sys.exit(0)
-
-    # Validate arguments
-    if not args.grid and not args.molecular_string and not args.validate:
-        parser.print_help()
-        sys.exit(1)
-
-    # Create configurations
     try:
-        render_config, parser_config, output_config = create_configs(args)
-    except Exception as e:
-        logger.error(f"Configuration error: {e}")
-        sys.exit(1)
+        # Handle utility options first
+        if args.list_formats:
+            formats = get_supported_formats()
+            print("Supported formats:")
+            print("\nInput formats:")
+            for fmt, desc in formats["input_formats"].items():
+                print(f"  {fmt:8} - {desc}")
+            print("\nOutput formats:")
+            for fmt, desc in formats["output_formats"].items():
+                print(f"  {fmt:8} - {desc}")
+            return
 
-    # Route to appropriate handler
-    if args.grid:
-        handle_grid_rendering(args, render_config, parser_config, output_config)
-    else:
-        handle_single_rendering(args, render_config, parser_config, output_config)
+        # Validate arguments
+        validate_input_arguments(args)
+
+        # Create configurations
+        render_config, parser_config, output_config = create_configs(args)
+
+        # Route to appropriate handler
+        if args.grid:
+            handle_grid_rendering(args, render_config, parser_config, output_config)
+        else:
+            # Early validation for single molecule if not in validate-only mode
+            if not args.validate:
+                validate_molecular_input(args.molecular_string, args.input_format)
+            handle_single_rendering(args, render_config, parser_config, output_config)
+
+    except CLIError as e:
+        logger.error(e.message)
+        sys.exit(e.exit_code)
+    except ValidationError as e:
+        logger.error(e.message)
+        if not args.validate:
+            logger.error("Use --help for usage information")
+        sys.exit(e.exit_code)
+    except ConfigurationError as e:
+        logger.error(e.message)
+        sys.exit(e.exit_code)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        if args.verbose:
+            import traceback
+
+            traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
