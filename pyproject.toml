@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mol-render = "molecular_string_renderer.cli:main"
+mol-render = "molecular_string_renderer.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/hunter-heidenreich/molecular-string-renderer"
