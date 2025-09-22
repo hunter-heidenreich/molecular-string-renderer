@@ -737,7 +737,7 @@ class TestFormatSpecificBehaviors:
 
     def test_svg_vector_vs_raster_modes(self, test_image):
         """Test SVG vector vs raster generation modes."""
-        from .conftest import assert_image_output_valid
+        from .conftest import TestValidators
 
         # Raster mode
         raster_config = OutputConfig(svg_use_vector=False)
@@ -749,18 +749,18 @@ class TestFormatSpecificBehaviors:
         vector_handler = get_output_handler("svg", vector_config)
         vector_result = vector_handler.get_bytes(test_image)
 
-        assert_image_output_valid(raster_result, "svg")
-        assert_image_output_valid(vector_result, "svg")
+        TestValidators.assert_image_output_valid(raster_result, "svg")
+        TestValidators.assert_image_output_valid(vector_result, "svg")
 
     def test_pdf_page_layout_variations(self, square_image, wide_image, tall_image):
         """Test PDF page layout with different image dimensions."""
-        from .conftest import assert_image_output_valid
+        from .conftest import TestValidators
 
         handler = get_output_handler("pdf")
 
         for image in [square_image, wide_image, tall_image]:
             result = handler.get_bytes(image)
-            assert_image_output_valid(result, "pdf")
+            TestValidators.assert_image_output_valid(result, "pdf")
 
 
 # =============================================================================
@@ -866,7 +866,7 @@ class TestRealWorldScenarios:
 
     def test_format_conversion_pipeline(self, test_image):
         """Test a format conversion pipeline."""
-        from .conftest import assert_image_output_valid
+        from .conftest import TestValidators
 
         # Convert through multiple formats
         formats = ["png", "jpeg", "webp", "svg", "pdf"]
@@ -874,7 +874,7 @@ class TestRealWorldScenarios:
         for format_name in formats:
             handler = get_output_handler(format_name)
             result = handler.get_bytes(test_image)
-            assert_image_output_valid(result, format_name)
+            TestValidators.assert_image_output_valid(result, format_name)
 
 
 class TestImageModeUtilsExtended:

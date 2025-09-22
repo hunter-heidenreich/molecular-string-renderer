@@ -512,6 +512,30 @@ class TestValidators:
             assert "<svg" in content, "SVG must contain svg element"
             assert "</svg>" in content, "SVG must be properly closed"
 
+    @staticmethod
+    def assert_config_preserved(
+        handler, expected_config: OutputConfig, context: str = ""
+    ) -> None:
+        """Assert that handler config is properly preserved."""
+        prefix = f"{context}: " if context else ""
+        assert handler.config is expected_config, (
+            f"{prefix}Handler must use exact config instance"
+        )
+        assert handler.config.quality == expected_config.quality, (
+            f"{prefix}Quality setting must be preserved"
+        )
+        assert handler.config.optimize == expected_config.optimize, (
+            f"{prefix}Optimize setting must be preserved"
+        )
+
+    @staticmethod
+    def assert_transparency_behavior(handler, image, format_name: str) -> None:
+        """Assert correct transparency handling based on format capabilities."""
+        result = handler.get_bytes(image)
+        TestValidators.assert_valid_bytes_output(
+            result, f"{format_name} transparency handling"
+        )
+
 
 class TestHelpers:
     """Advanced test helper functions for complex testing scenarios."""
@@ -538,30 +562,6 @@ class TestHelpers:
             assert len(result) > 0, (
                 f"Non-alpha format {format_name} should handle alpha images"
             )
-
-    @staticmethod
-    def assert_config_preserved(
-        handler, expected_config: OutputConfig, context: str = ""
-    ) -> None:
-        """Assert that handler config is properly preserved."""
-        prefix = f"{context}: " if context else ""
-        assert handler.config is expected_config, (
-            f"{prefix}Handler must use exact config instance"
-        )
-        assert handler.config.quality == expected_config.quality, (
-            f"{prefix}Quality setting must be preserved"
-        )
-        assert handler.config.optimize == expected_config.optimize, (
-            f"{prefix}Optimize setting must be preserved"
-        )
-
-    @staticmethod
-    def assert_transparency_behavior(handler, image, format_name: str) -> None:
-        """Assert correct transparency handling based on format capabilities."""
-        result = handler.get_bytes(image)
-        TestValidators.assert_valid_bytes_output(
-            result, f"{format_name} transparency handling"
-        )
 
     @staticmethod
     def test_with_multiple_images(handler, test_function, image_list: list) -> None:
