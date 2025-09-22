@@ -45,16 +45,6 @@ class TestSubModuleImports:
 class TestSubModuleBackwardCompatibility:
     """Test that the sub-module maintains backward compatibility."""
 
-    def test_legacy_imports_still_work(self):
-        """Test that old import patterns still work."""
-        # These imports should work exactly as they did before
-        from molecular_string_renderer.parsers import SMILESParser as LegacySMILESParser
-        from molecular_string_renderer.parsers import get_parser as legacy_get_parser
-
-        # Should be the same classes
-        assert LegacySMILESParser is SMILESParser
-        assert legacy_get_parser is get_parser
-
     def test_factory_function_compatibility(self):
         """Test that factory function maintains same API."""
         # Should work exactly as before

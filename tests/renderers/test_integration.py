@@ -52,20 +52,6 @@ class TestSubModuleImports:
 class TestSubModuleBackwardCompatibility:
     """Test that the sub-module maintains backward compatibility."""
 
-    def test_legacy_imports_still_work(self):
-        """Test that old import patterns still work."""
-        # These imports should work exactly as they did before
-        from molecular_string_renderer.renderers import (
-            Molecule2DRenderer as Legacy2DRenderer,
-        )
-        from molecular_string_renderer.renderers import (
-            get_renderer as legacy_get_renderer,
-        )
-
-        # Should be the same classes
-        assert Legacy2DRenderer is Molecule2DRenderer
-        assert legacy_get_renderer is get_renderer
-
     def test_factory_function_compatibility(self):
         """Test that factory function maintains same API."""
         # Should work exactly as before

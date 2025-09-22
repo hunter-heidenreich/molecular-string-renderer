@@ -381,15 +381,6 @@ class FormatCapabilities:
         return format_name in VECTOR_FORMATS
 
 
-# Backward compatibility aliases
-get_format_capabilities = FormatCapabilities.get
-supports_transparency = supports_alpha = FormatCapabilities.supports_alpha
-supports_quality = FormatCapabilities.supports_quality
-supports_optimization = FormatCapabilities.supports_optimization
-is_raster_format = FormatCapabilities.is_raster
-is_vector_format = FormatCapabilities.is_vector
-
-
 def get_expected_mode_conversion(format_name: str, original_mode: str) -> str:
     """Get expected image mode after conversion for a format."""
     format_behavior = FORMAT_MODE_BEHAVIOR.get(format_name, {})
@@ -451,19 +442,6 @@ class TestConstants:
     STRESS_TEST_ITERATIONS = 5
 
 
-# Backward compatibility - maintain module-level constants
-MIN_FILE_SIZE = TestConstants.MIN_FILE_SIZE
-MAX_REASONABLE_FILE_SIZE = TestConstants.MAX_REASONABLE_FILE_SIZE
-LARGE_IMAGE_DIMENSION = TestConstants.LARGE_IMAGE_DIMENSION
-SMALL_IMAGE_DIMENSION = TestConstants.SMALL_IMAGE_DIMENSION
-QUALITY_LOW = TestConstants.QUALITY_LOW
-QUALITY_HIGH = TestConstants.QUALITY_HIGH
-QUALITY_MIN = TestConstants.QUALITY_MIN
-QUALITY_MAX = TestConstants.QUALITY_MAX
-MEMORY_TEST_ITERATIONS = TestConstants.MEMORY_TEST_ITERATIONS
-STRESS_TEST_ITERATIONS = TestConstants.STRESS_TEST_ITERATIONS
-
-
 # =============================================================================
 # Test Helper Functions
 # =============================================================================
@@ -477,7 +455,7 @@ class TestValidators:
         """Assert that a result is valid bytes output."""
         assert isinstance(result, bytes), f"{context} must return a bytes object"
         assert len(result) > 0, f"{context} must return non-empty bytes"
-        assert len(result) < MAX_REASONABLE_FILE_SIZE, (
+        assert len(result) < TestConstants.MAX_REASONABLE_FILE_SIZE, (
             f"{context} produced unreasonably large output: {len(result)} bytes"
         )
 
@@ -489,7 +467,7 @@ class TestValidators:
         assert file_path.exists(), f"{context} should be created at {file_path}"
         file_size = file_path.stat().st_size
         assert file_size > 0, f"Created {context} must not be empty"
-        assert file_size < MAX_REASONABLE_FILE_SIZE, (
+        assert file_size < TestConstants.MAX_REASONABLE_FILE_SIZE, (
             f"Created {context} is unreasonably large: {file_size} bytes"
         )
         assert file_path.suffix == expected_extension, (
@@ -533,14 +511,6 @@ class TestValidators:
             assert "<?xml" in content, "SVG must contain XML declaration"
             assert "<svg" in content, "SVG must contain svg element"
             assert "</svg>" in content, "SVG must be properly closed"
-
-
-# Backward compatibility aliases
-assert_valid_bytes_output = TestValidators.assert_valid_bytes_output
-assert_file_created_properly = TestValidators.assert_file_created_properly
-assert_handler_interface_complete = TestValidators.assert_handler_interface_complete
-validate_handler_interface = TestValidators.assert_handler_interface_complete
-assert_image_output_valid = TestValidators.assert_image_output_valid
 
 
 class TestHelpers:
@@ -643,16 +613,6 @@ class TestHelpers:
             pass  # Expected
 
 
-# Backward compatibility aliases
-test_handler_with_all_image_modes = TestHelpers.test_handler_with_all_image_modes
-validate_format_specific_behavior = TestHelpers.validate_format_specific_behavior
-assert_config_preserved = TestHelpers.assert_config_preserved
-assert_transparency_behavior = TestHelpers.assert_transparency_behavior
-test_with_multiple_images = TestHelpers.test_with_multiple_images
-validate_image_modes_handled = TestHelpers.validate_image_modes_handled
-test_error_scenarios = TestHelpers.test_error_scenarios
-
-
 class QualityOptimizationHelpers:
     """Helpers for testing quality and optimization behavior."""
 
@@ -691,15 +651,6 @@ class QualityOptimizationHelpers:
                 assert optimized_bytes == unoptimized_bytes, (
                     f"Non-optimization format {format_name} should produce identical output regardless of optimization setting"
                 )
-
-
-# Backward compatibility aliases
-assert_quality_behavior_correct = (
-    QualityOptimizationHelpers.assert_quality_behavior_correct
-)
-assert_optimization_behavior_correct = (
-    QualityOptimizationHelpers.assert_optimization_behavior_correct
-)
 
 
 def assert_raster_handler_properties(handler, format_name: str) -> None:

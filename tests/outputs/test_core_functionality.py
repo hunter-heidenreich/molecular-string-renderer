@@ -20,9 +20,9 @@ class TestOutputHandlerInterface:
 
     def test_handler_interface_complete(self, output_handler, format_name):
         """Test that handler implements complete interface."""
-        from .conftest import assert_handler_interface_complete
+        from .conftest import TestValidators
 
-        assert_handler_interface_complete(output_handler, format_name)
+        TestValidators.assert_handler_interface_complete(output_handler, format_name)
 
     def test_file_extension_format(self, output_handler):
         """Test that file extension starts with dot and is valid."""
@@ -99,18 +99,18 @@ class TestOutputHandlerBasicOperations:
 
     def test_get_bytes_basic_operation(self, output_handler, test_image):
         """Test that get_bytes returns valid bytes."""
-        from .conftest import assert_valid_bytes_output
+        from .conftest import TestValidators
 
         result = output_handler.get_bytes(test_image)
-        assert_valid_bytes_output(result, f"{output_handler.format_name} get_bytes")
+        TestValidators.assert_valid_bytes_output(result, f"{output_handler.format_name} get_bytes")
 
     def test_save_basic_operation(self, output_handler, test_image, temp_dir):
         """Test that save creates valid files."""
-        from .conftest import assert_file_created_properly
+        from .conftest import TestValidators
 
-        output_path = temp_dir / f"test{output_handler.file_extension}"
-        output_handler.save(test_image, output_path)
-        assert_file_created_properly(output_path, output_handler.file_extension)
+        file_path = temp_dir / f"test{output_handler.file_extension}"
+        output_handler.save(test_image, file_path)
+        TestValidators.assert_file_created_properly(file_path, output_handler.file_extension, "test output")
 
     @pytest.mark.parametrize("path_type", ["string", "pathlib"])
     def test_save_accepts_both_path_types(
