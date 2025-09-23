@@ -76,7 +76,7 @@ class VectorSVGStrategy(SVGGenerationStrategy):
                 width=image.width,
                 height=image.height,
                 kekulize=True,
-                lineWidthMult=config.svg_line_width_mult,
+                lineWidthMult=int(config.svg_line_width_mult),
                 includeAtomCircles=True,
             )
 
