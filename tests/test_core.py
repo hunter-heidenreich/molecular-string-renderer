@@ -33,7 +33,7 @@ class TestRenderMolecule:
     def test_render_molecule_default_parameters(self):
         """Test render_molecule with default parameters."""
         # Should work with valid SMILES string
-        image = render_molecule("CCO")
+        image = render_molecule("CCO", auto_filename=False)
 
         assert isinstance(image, Image.Image)
         assert image.mode in ["RGBA", "RGB"]
@@ -49,7 +49,7 @@ class TestRenderMolecule:
         ]
 
         for smiles in valid_smiles:
-            image = render_molecule(smiles, format_type="smiles")
+            image = render_molecule(smiles, format_type="smiles", auto_filename=False)
             assert isinstance(image, Image.Image)
 
     def test_render_molecule_with_valid_inchi(self):
@@ -60,7 +60,7 @@ class TestRenderMolecule:
         ]
 
         for inchi in valid_inchi:
-            image = render_molecule(inchi, format_type="inchi")
+            image = render_molecule(inchi, format_type="inchi", auto_filename=False)
             assert isinstance(image, Image.Image)
 
     def test_render_molecule_different_output_formats(self):
@@ -68,7 +68,9 @@ class TestRenderMolecule:
         output_formats = ["png", "svg", "jpg", "jpeg", "webp", "tiff", "bmp"]
 
         for output_format in output_formats:
-            image = render_molecule("CCO", output_format=output_format)
+            image = render_molecule(
+                "CCO", output_format=output_format, auto_filename=False
+            )
             assert isinstance(image, Image.Image)
 
     def test_render_molecule_with_custom_render_config(self):
@@ -81,7 +83,7 @@ class TestRenderMolecule:
             show_carbon=True,
         )
 
-        image = render_molecule("CCO", render_config=render_config)
+        image = render_molecule("CCO", render_config=render_config, auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -89,7 +91,7 @@ class TestRenderMolecule:
         """Test render_molecule with custom parser configuration."""
         parser_config = ParserConfig(sanitize=True, show_hydrogen=True, strict=False)
 
-        image = render_molecule("CCO", parser_config=parser_config)
+        image = render_molecule("CCO", parser_config=parser_config, auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -97,7 +99,7 @@ class TestRenderMolecule:
         """Test render_molecule with custom output configuration."""
         output_config = OutputConfig(quality=90, dpi=300, optimize=True)
 
-        image = render_molecule("CCO", output_config=output_config)
+        image = render_molecule("CCO", output_config=output_config, auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -204,7 +206,7 @@ class TestRenderMolecule:
     def test_render_molecule_configuration_initialization(self):
         """Test that configurations are properly initialized."""
         # Test that render_molecule works with default configurations
-        image = render_molecule("CCO")
+        image = render_molecule("CCO", auto_filename=False)
         assert isinstance(image, Image.Image)
 
         # Test with custom configurations
@@ -217,6 +219,7 @@ class TestRenderMolecule:
             render_config=render_config,
             parser_config=parser_config,
             output_config=output_config,
+            auto_filename=False,
         )
         assert isinstance(image, Image.Image)
 
@@ -226,7 +229,7 @@ class TestRenderMolecule:
             mock_logged_op.return_value.__enter__ = Mock()
             mock_logged_op.return_value.__exit__ = Mock()
 
-            render_molecule("CCO")
+            render_molecule("CCO", auto_filename=False)
 
             # Should log the operation
             mock_logged_op.assert_called_once()
@@ -246,7 +249,9 @@ class TestRenderMolecule:
         ]
 
         for format_type, molecule in test_cases:
-            image = render_molecule(molecule, format_type=format_type)
+            image = render_molecule(
+                molecule, format_type=format_type, auto_filename=False
+            )
             assert isinstance(image, Image.Image)
 
     def test_render_molecule_output_path_types(self):
@@ -797,7 +802,10 @@ class TestCoreIntegration:
 
         # Render molecule
         image = render_molecule(
-            "CCO", format_type=input_format, output_format=output_format
+            "CCO",
+            format_type=input_format,
+            output_format=output_format,
+            auto_filename=False,
         )
         assert isinstance(image, Image.Image)
 
@@ -832,6 +840,7 @@ class TestCoreIntegration:
             render_config=render_config,
             parser_config=parser_config,
             output_config=output_config,
+            auto_filename=False,
         )
 
         image2 = render_molecules_grid(
@@ -862,7 +871,9 @@ class TestCoreIntegration:
             assert validate_molecular_string(molecule, format_type) is True
 
             # Should render successfully
-            image = render_molecule(molecule, format_type=format_type)
+            image = render_molecule(
+                molecule, format_type=format_type, auto_filename=False
+            )
             assert isinstance(image, Image.Image)
 
     def test_end_to_end_workflow(self):
@@ -920,7 +931,7 @@ class TestCoreIntegration:
         # Multiple render calls
         for _ in range(2):
             for mol in molecules[:2]:  # Limit to avoid too much computation
-                image = render_molecule(mol)
+                image = render_molecule(mol, auto_filename=False)
                 assert isinstance(image, Image.Image)
 
         # Grid rendering
@@ -937,7 +948,7 @@ class TestCoreErrorHandling:
         # Use a simple valid molecule to avoid parsing errors
         simple_molecule = "CCCCCCCCCC"  # decane
 
-        image = render_molecule(simple_molecule)
+        image = render_molecule(simple_molecule, auto_filename=False)
         assert isinstance(image, Image.Image)
 
     def test_io_error_simulation(self):
@@ -963,7 +974,7 @@ class TestCoreErrorHandling:
 
         def render_worker():
             try:
-                image = render_molecule("CCO")
+                image = render_molecule("CCO", auto_filename=False)
                 results.append(image)
             except Exception as e:
                 errors.append(e)
@@ -996,7 +1007,7 @@ class TestCoreErrorHandling:
             render_molecule("", "smiles")  # This should fail
 
         # Next operation should still work
-        image = render_molecule("CCO", "smiles")
+        image = render_molecule("CCO", "smiles", auto_filename=False)
         assert isinstance(image, Image.Image)
 
         # Test with grid rendering
