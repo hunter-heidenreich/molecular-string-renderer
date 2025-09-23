@@ -23,13 +23,13 @@ class TestRenderingPipelineBasic:
         render_config = RenderConfig(width=800, height=600)
         parser_config = ParserConfig()
         output_config = OutputConfig()
-        
+
         pipeline = RenderingPipeline(
             render_config=render_config,
             parser_config=parser_config,
-            output_config=output_config
+            output_config=output_config,
         )
-        
+
         assert pipeline.render_config is render_config
         assert pipeline.parser_config is parser_config
         assert pipeline.output_config is output_config
@@ -37,18 +37,15 @@ class TestRenderingPipelineBasic:
     def test_initialization_with_different_render_configs(self):
         """Test pipeline initialization with various render configurations."""
         render_config = RenderConfig(
-            width=1024,
-            height=768,
-            background_color="white",
-            show_hydrogen=True
+            width=1024, height=768, background_color="white", show_hydrogen=True
         )
-        
+
         pipeline = RenderingPipeline(
             render_config=render_config,
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         assert pipeline.render_config.width == 1024
         assert pipeline.render_config.height == 768
         assert pipeline.render_config.background_color == "white"
@@ -59,14 +56,16 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
-        with patch('molecular_string_renderer.utils.validate_and_normalize_inputs') as mock_validate:
+
+        with patch(
+            "molecular_string_renderer.utils.validate_and_normalize_inputs"
+        ) as mock_validate:
             mock_validate.return_value = ("CCO", "smiles", Path("test.png"))
-            
+
             result = pipeline.validate_inputs("CCO", "smiles", "test.png")
-            
+
             assert result == ("CCO", "smiles", Path("test.png"))
             mock_validate.assert_called_once_with("CCO", "smiles", "test.png")
 
@@ -75,14 +74,16 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
-        with patch('molecular_string_renderer.utils.validate_and_normalize_inputs') as mock_validate:
+
+        with patch(
+            "molecular_string_renderer.utils.validate_and_normalize_inputs"
+        ) as mock_validate:
             mock_validate.return_value = ("CCO", "smiles", None)
-            
+
             result = pipeline.validate_inputs("CCO", "smiles", None)
-            
+
             assert result == ("CCO", "smiles", None)
             mock_validate.assert_called_once_with("CCO", "smiles", None)
 
@@ -91,12 +92,14 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
-        with patch('molecular_string_renderer.utils.validate_and_normalize_inputs') as mock_validate:
+
+        with patch(
+            "molecular_string_renderer.utils.validate_and_normalize_inputs"
+        ) as mock_validate:
             mock_validate.side_effect = ValueError("Invalid molecular string")
-            
+
             with pytest.raises(ValueError, match="Invalid molecular string"):
                 pipeline.validate_inputs("invalid", "smiles", None)
 
@@ -105,12 +108,12 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Test with a real SMILES string that should parse successfully
         result = pipeline.parse_molecule("CCO", "smiles")
-        
+
         # Should return a molecule object (not None)
         assert result is not None
 
@@ -119,9 +122,9 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Test with an invalid SMILES string
         with pytest.raises(ParsingError, match="Failed to parse SMILES"):
             pipeline.parse_molecule("INVALID_SMILES_123", "smiles")
@@ -131,18 +134,18 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Test with valid inputs that will actually parse
         test_cases = [
             ("CCO", "smiles"),
             ("InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3", "inchi"),
         ]
-        
+
         for molecular_string, format_type in test_cases:
             result = pipeline.parse_molecule(molecular_string, format_type)
-            
+
             # Should return a valid molecule object, not None
             assert result is not None
 
@@ -151,9 +154,9 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Use real implementation - empty string should trigger ParsingError
         with pytest.raises(ParsingError, match="Failed to parse SMILES"):
             pipeline.parse_molecule("", "smiles")
@@ -163,15 +166,15 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(width=200, height=200),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # First parse a valid molecule
         mol = pipeline.parse_molecule("CCO", "smiles")
-        
+
         # Then render it
         image = pipeline.render_molecule(mol)
-        
+
         # Should return an image
         assert image is not None
 
@@ -180,9 +183,9 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Test with None (which should cause a rendering error)
         with pytest.raises(RenderingError, match="Failed to render molecule"):
             pipeline.render_molecule(None)
@@ -194,18 +197,18 @@ class TestRenderingPipelineBasic:
             (800, 600),
             (1024, 768),
         ]
-        
+
         for width, height in test_cases:
             pipeline = RenderingPipeline(
                 render_config=RenderConfig(width=width, height=height),
                 parser_config=ParserConfig(),
-                output_config=OutputConfig()
+                output_config=OutputConfig(),
             )
-            
+
             # Parse a real molecule and render it
             mol = pipeline.parse_molecule("CCO", "smiles")
             result = pipeline.render_molecule(mol)
-            
+
             # Should return a valid image
             assert result is not None
 
@@ -214,18 +217,15 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Mock image for testing
         mock_image = Mock()
-        
+
         # Should not raise any errors
         pipeline.save_output(
-            image=mock_image,
-            output_path=None,
-            output_format="png",
-            auto_filename=False
+            image=mock_image, output_path=None, output_format="png", auto_filename=False
         )
 
     def test_save_output_with_path_delegates_to_utils(self):
@@ -233,19 +233,17 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         mock_image = Mock()
         output_path = Path("test.png")
-        
-        with patch('molecular_string_renderer.utils.handle_output_saving') as mock_save:
+
+        with patch("molecular_string_renderer.utils.handle_output_saving") as mock_save:
             pipeline.save_output(
-                image=mock_image,
-                output_path=output_path,
-                output_format="png"
+                image=mock_image, output_path=output_path, output_format="png"
             )
-            
+
             mock_save.assert_called_once_with(
                 image=mock_image,
                 output_path=output_path,
@@ -253,7 +251,7 @@ class TestRenderingPipelineBasic:
                 output_config=pipeline.output_config,
                 mol=None,
                 auto_filename=False,
-                molecular_string=None
+                molecular_string=None,
             )
 
     def test_pipeline_configuration_affects_behavior(self):
@@ -261,26 +259,26 @@ class TestRenderingPipelineBasic:
         # Test with different render configs
         small_config = RenderConfig(width=100, height=100)
         large_config = RenderConfig(width=500, height=500)
-        
+
         small_pipeline = RenderingPipeline(
             render_config=small_config,
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         large_pipeline = RenderingPipeline(
             render_config=large_config,
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Parse the same molecule
         mol = small_pipeline.parse_molecule("CCO", "smiles")
-        
+
         # Render with different configs
         small_image = small_pipeline.render_molecule(mol)
         large_image = large_pipeline.render_molecule(mol)
-        
+
         # Both should produce images
         assert small_image is not None
         assert large_image is not None
@@ -290,17 +288,17 @@ class TestRenderingPipelineBasic:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # First, have a parsing error
         with pytest.raises(ParsingError):
             pipeline.parse_molecule("INVALID", "smiles")
-        
+
         # Pipeline should still work for valid inputs
         valid_mol = pipeline.parse_molecule("CCO", "smiles")
         assert valid_mol is not None
-        
+
         # And rendering should still work
         image = pipeline.render_molecule(valid_mol)
         assert image is not None
@@ -314,26 +312,26 @@ class TestRenderingPipelineWorkflow:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(width=300, height=300),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Complete workflow
         molecular_string, format_type, output_path = pipeline.validate_inputs(
             "CCO", "smiles", None
         )
-        
+
         mol = pipeline.parse_molecule(molecular_string, format_type)
         image = pipeline.render_molecule(mol)
-        
+
         # Save output (without actual file creation)
         pipeline.save_output(
             image=image,
             output_path=output_path,
             output_format="png",
             mol=mol,
-            auto_filename=False
+            auto_filename=False,
         )
-        
+
         # All steps should complete without error
         assert molecular_string == "CCO"
         assert format_type == "smiles"
@@ -346,27 +344,27 @@ class TestRenderingPipelineWorkflow:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Test cases with different formats
         test_cases = [
             ("CCO", "smiles"),
             ("InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3", "inchi"),
         ]
-        
+
         for molecular_string, format_type in test_cases:
             # Validate inputs
             validated_string, validated_format, _ = pipeline.validate_inputs(
                 molecular_string, format_type, None
             )
-            
+
             # Parse molecule
             mol = pipeline.parse_molecule(validated_string, validated_format)
-            
+
             # Render molecule
             image = pipeline.render_molecule(mol)
-            
+
             # All steps should succeed
             assert validated_string == molecular_string
             assert validated_format == format_type
@@ -378,14 +376,14 @@ class TestRenderingPipelineWorkflow:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Test parsing error propagation
         molecular_string, format_type, _ = pipeline.validate_inputs(
             "INVALID_MOLECULE", "smiles", None
         )
-        
+
         # Parsing should fail
         with pytest.raises(ParsingError):
             pipeline.parse_molecule(molecular_string, format_type)
@@ -395,10 +393,12 @@ class TestRenderingPipelineWorkflow:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
 
-        with patch('molecular_string_renderer.utils.validate_and_normalize_inputs') as mock_validate:
+        with patch(
+            "molecular_string_renderer.utils.validate_and_normalize_inputs"
+        ) as mock_validate:
             mock_validate.return_value = ("CCO", "smiles", Path("output.png"))
 
             # Simulate a full pipeline workflow
@@ -424,10 +424,12 @@ class TestRenderingPipelineIntegration:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(width=300, height=300),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
 
-        with patch('molecular_string_renderer.utils.validate_and_normalize_inputs') as mock_validate:
+        with patch(
+            "molecular_string_renderer.utils.validate_and_normalize_inputs"
+        ) as mock_validate:
             # Mock only the validation step
             mock_validate.return_value = ("CCO", "smiles", Path("ethanol.png"))
 
@@ -450,12 +452,14 @@ class TestRenderingPipelineIntegration:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(width=500, height=400),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
 
         inchi_string = "InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3"
 
-        with patch('molecular_string_renderer.utils.validate_and_normalize_inputs') as mock_validate:
+        with patch(
+            "molecular_string_renderer.utils.validate_and_normalize_inputs"
+        ) as mock_validate:
             mock_validate.return_value = (inchi_string, "inchi", Path("ethanol.svg"))
 
             # Execute pipeline
@@ -476,15 +480,23 @@ class TestRenderingPipelineIntegration:
         """Test pipeline with various configuration combinations."""
         config_combinations = [
             (RenderConfig(width=200, height=200), ParserConfig(), OutputConfig()),
-            (RenderConfig(width=800, height=600, show_hydrogen=True), ParserConfig(), OutputConfig()),
-            (RenderConfig(width=400, height=400, background_color="white"), ParserConfig(), OutputConfig()),
+            (
+                RenderConfig(width=800, height=600, show_hydrogen=True),
+                ParserConfig(),
+                OutputConfig(),
+            ),
+            (
+                RenderConfig(width=400, height=400, background_color="white"),
+                ParserConfig(),
+                OutputConfig(),
+            ),
         ]
 
         for render_config, parser_config, output_config in config_combinations:
             pipeline = RenderingPipeline(
                 render_config=render_config,
                 parser_config=parser_config,
-                output_config=output_config
+                output_config=output_config,
             )
 
             # Test that pipeline works with this configuration
@@ -493,7 +505,7 @@ class TestRenderingPipelineIntegration:
 
             assert mol is not None
             assert image is not None
-            
+
             # Verify configurations are stored correctly
             assert pipeline.render_config is render_config
             assert pipeline.parser_config is parser_config
@@ -504,7 +516,7 @@ class TestRenderingPipelineIntegration:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
 
         # Test parsing error with invalid SMILES
@@ -526,21 +538,21 @@ class TestRenderingPipelineIntegration:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(width=300, height=300),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
 
         # Parse and render a real molecule
         mol = pipeline.parse_molecule("CCO", "smiles")
         image = pipeline.render_molecule(mol)
 
-        with patch('molecular_string_renderer.utils.handle_output_saving') as mock_save:
+        with patch("molecular_string_renderer.utils.handle_output_saving") as mock_save:
             # Test save_output without path (should not call utils)
             pipeline.save_output(
                 image=image,
                 output_path=None,
                 output_format="png",
                 mol=mol,
-                auto_filename=False
+                auto_filename=False,
             )
             mock_save.assert_not_called()
 
@@ -551,7 +563,7 @@ class TestRenderingPipelineIntegration:
                 output_format="png",
                 mol=mol,
                 auto_filename=False,
-                molecular_string="CCO"
+                molecular_string="CCO",
             )
             mock_save.assert_called_once()
 
@@ -560,14 +572,14 @@ class TestRenderingPipelineIntegration:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(width=400, height=400),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
 
         # Parse and render a real molecule
         mol = pipeline.parse_molecule("CCC", "smiles")
         image = pipeline.render_molecule(mol)
 
-        with patch('molecular_string_renderer.utils.handle_output_saving') as mock_save:
+        with patch("molecular_string_renderer.utils.handle_output_saving") as mock_save:
             # Test auto filename generation
             pipeline.save_output(
                 image=image,
@@ -575,14 +587,14 @@ class TestRenderingPipelineIntegration:
                 output_format="png",
                 mol=mol,
                 auto_filename=True,
-                molecular_string="CCC"
+                molecular_string="CCC",
             )
-            
+
             # Should have called handle_output_saving with auto_filename=True
             mock_save.assert_called_once()
             call_args = mock_save.call_args
-            assert call_args.kwargs['auto_filename'] is True
-            assert call_args.kwargs['molecular_string'] == "CCC"
+            assert call_args.kwargs["auto_filename"] is True
+            assert call_args.kwargs["molecular_string"] == "CCC"
 
     def test_pipeline_workflow_isolation(self):
         """Test that pipeline instances are isolated from each other."""
@@ -590,19 +602,19 @@ class TestRenderingPipelineIntegration:
         pipeline1 = RenderingPipeline(
             render_config=RenderConfig(width=300, height=300),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         pipeline2 = RenderingPipeline(
             render_config=RenderConfig(width=600, height=600, show_hydrogen=True),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
 
         # Both should work independently
         mol1 = pipeline1.parse_molecule("CCO", "smiles")
         mol2 = pipeline2.parse_molecule("CCC", "smiles")
-        
+
         image1 = pipeline1.render_molecule(mol1)
         image2 = pipeline2.render_molecule(mol2)
 
@@ -627,9 +639,9 @@ class TestRenderingPipelineEdgeCases:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         # Empty molecular string should fail parsing
         with pytest.raises(ParsingError):
             pipeline.parse_molecule("", "smiles")
@@ -637,22 +649,22 @@ class TestRenderingPipelineEdgeCases:
     def test_different_render_dimensions(self):
         """Test pipeline with various render dimensions."""
         dimensions = [
-            (100, 100),   # Minimum practical size
-            (500, 400),   # Standard
-            (2000, 2000), # Large
+            (100, 100),  # Minimum practical size
+            (500, 400),  # Standard
+            (2000, 2000),  # Large
         ]
-        
+
         for width, height in dimensions:
             pipeline = RenderingPipeline(
                 render_config=RenderConfig(width=width, height=height),
                 parser_config=ParserConfig(),
-                output_config=OutputConfig()
+                output_config=OutputConfig(),
             )
-            
+
             # Parse and render a simple molecule
             mol = pipeline.parse_molecule("C", "smiles")
             image = pipeline.render_molecule(mol)
-            
+
             assert mol is not None
             assert image is not None
 
@@ -661,32 +673,34 @@ class TestRenderingPipelineEdgeCases:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
-        
+
         mock_image = Mock()
         mock_mol = Mock()
-        
+
         # Test different combinations
         test_cases = [
             # (output_path, auto_filename, should_call_utils)
-            (None, False, False),          # No saving
-            (None, True, True),            # Auto filename
-            ("test.png", False, True),     # Explicit path
-            ("test.png", True, True),      # Both path and auto filename
+            (None, False, False),  # No saving
+            (None, True, True),  # Auto filename
+            ("test.png", False, True),  # Explicit path
+            ("test.png", True, True),  # Both path and auto filename
         ]
-        
+
         for output_path, auto_filename, should_call_utils in test_cases:
-            with patch('molecular_string_renderer.utils.handle_output_saving') as mock_save:
+            with patch(
+                "molecular_string_renderer.utils.handle_output_saving"
+            ) as mock_save:
                 pipeline.save_output(
                     image=mock_image,
                     output_path=output_path,
                     output_format="png",
                     mol=mock_mol,
                     auto_filename=auto_filename,
-                    molecular_string="CCO"
+                    molecular_string="CCO",
                 )
-                
+
                 if should_call_utils:
                     mock_save.assert_called_once()
                 else:
@@ -697,13 +711,13 @@ class TestRenderingPipelineEdgeCases:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(width=100, height=100),  # Small dimensions
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
 
         # Test with minimal molecule
         mol = pipeline.parse_molecule("C", "smiles")  # Single carbon
         image = pipeline.render_molecule(mol)
-        
+
         assert mol is not None
         assert image is not None
 
@@ -712,7 +726,7 @@ class TestRenderingPipelineEdgeCases:
         pipeline = RenderingPipeline(
             render_config=RenderConfig(),
             parser_config=ParserConfig(),
-            output_config=OutputConfig()
+            output_config=OutputConfig(),
         )
 
         # Test cases with valid inputs for each format
@@ -724,6 +738,8 @@ class TestRenderingPipelineEdgeCases:
         for molecular_string, format_type in test_cases:
             mol = pipeline.parse_molecule(molecular_string, format_type)
             image = pipeline.render_molecule(mol)
-            
+
             assert mol is not None, f"Failed to parse {format_type}: {molecular_string}"
-            assert image is not None, f"Failed to render {format_type}: {molecular_string}"
+            assert image is not None, (
+                f"Failed to render {format_type}: {molecular_string}"
+            )
