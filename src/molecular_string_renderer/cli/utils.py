@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 def normalize_format(value: str) -> str:
     """Normalize format input to lowercase.
-    
+
     Args:
         value: The format string to normalize.
-        
+
     Returns:
         The normalized format string in lowercase.
-        
+
     Raises:
         argparse.ArgumentTypeError: If the format is not valid.
     """

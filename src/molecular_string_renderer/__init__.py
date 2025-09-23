@@ -17,7 +17,7 @@ Example usage:
 
 from molecular_string_renderer.config import OutputConfig, ParserConfig, RenderConfig
 from molecular_string_renderer.core import (
-    MolecularRenderer,
+    get_supported_formats,
     render_molecule,
     render_molecules_grid,
     validate_molecular_string,
@@ -32,6 +32,7 @@ from molecular_string_renderer.exceptions import (
 )
 from molecular_string_renderer.outputs import PNGOutput, SVGOutput
 from molecular_string_renderer.parsers import SMILESParser
+from molecular_string_renderer.renderer import MolecularRenderer
 from molecular_string_renderer.renderers import Molecule2DRenderer
 
 __version__ = "0.2.0"
@@ -41,6 +42,7 @@ __all__ = [
     "render_molecule",
     "render_molecules_grid",
     "validate_molecular_string",
+    "get_supported_formats",
     "MolecularRenderer",
     "SMILESParser",
     "Molecule2DRenderer",

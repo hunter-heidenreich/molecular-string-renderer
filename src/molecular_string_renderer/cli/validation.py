@@ -22,7 +22,9 @@ def validate_input_arguments(args) -> None:
         raise CLIValidationError("--validate requires a molecular string argument")
 
     if not args.grid and not args.molecular_string and not args.list_formats:
-        raise CLIValidationError("No action specified. Use --help for usage information.")
+        raise CLIValidationError(
+            "No action specified. Use --help for usage information."
+        )
 
     # Validate grid-specific arguments
     if args.grid and args.molecular_string:

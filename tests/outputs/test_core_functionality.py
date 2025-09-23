@@ -102,7 +102,9 @@ class TestOutputHandlerBasicOperations:
         from .conftest import TestValidators
 
         result = output_handler.get_bytes(test_image)
-        TestValidators.assert_valid_bytes_output(result, f"{output_handler.format_name} get_bytes")
+        TestValidators.assert_valid_bytes_output(
+            result, f"{output_handler.format_name} get_bytes"
+        )
 
     def test_save_basic_operation(self, output_handler, test_image, temp_dir):
         """Test that save creates valid files."""
@@ -110,7 +112,9 @@ class TestOutputHandlerBasicOperations:
 
         file_path = temp_dir / f"test{output_handler.file_extension}"
         output_handler.save(test_image, file_path)
-        TestValidators.assert_file_created_properly(file_path, output_handler.file_extension, "test output")
+        TestValidators.assert_file_created_properly(
+            file_path, output_handler.file_extension, "test output"
+        )
 
     @pytest.mark.parametrize("path_type", ["string", "pathlib"])
     def test_save_accepts_both_path_types(
@@ -123,7 +127,9 @@ class TestOutputHandlerBasicOperations:
         path_input = str(base_path) if path_type == "string" else base_path
 
         output_handler.save(test_image, path_input)
-        TestValidators.assert_file_created_properly(base_path, output_handler.file_extension)
+        TestValidators.assert_file_created_properly(
+            base_path, output_handler.file_extension
+        )
 
     def test_save_auto_extension(self, output_handler, test_image, temp_dir):
         """Test that save automatically adds extension when missing."""
@@ -134,7 +140,9 @@ class TestOutputHandlerBasicOperations:
         expected_path = temp_dir / f"{base_name}{output_handler.file_extension}"
 
         output_handler.save(test_image, output_path)
-        TestValidators.assert_file_created_properly(expected_path, output_handler.file_extension)
+        TestValidators.assert_file_created_properly(
+            expected_path, output_handler.file_extension
+        )
         assert not output_path.exists(), (
             "Original path without extension should not exist"
         )
@@ -149,7 +157,9 @@ class TestOutputHandlerBasicOperations:
         assert not nested_path.parent.exists(), "Parent should not exist initially"
 
         output_handler.save(test_image, nested_path)
-        TestValidators.assert_file_created_properly(nested_path, output_handler.file_extension)
+        TestValidators.assert_file_created_properly(
+            nested_path, output_handler.file_extension
+        )
         assert nested_path.parent.is_dir(), "Parent directories should be created"
 
 
@@ -298,7 +308,9 @@ class TestOutputHandlerConfiguration:
         handler = get_output_handler(format_name, config)
 
         result = handler.get_bytes(test_image)
-        TestValidators.assert_valid_bytes_output(result, f"{format_name} quality {quality}")
+        TestValidators.assert_valid_bytes_output(
+            result, f"{format_name} quality {quality}"
+        )
         TestValidators.assert_config_preserved(handler, config, f"Quality {quality}")
 
     @pytest.mark.parametrize("optimize", [True, False])
@@ -310,7 +322,9 @@ class TestOutputHandlerConfiguration:
         handler = get_output_handler(format_name, config)
 
         result = handler.get_bytes(test_image)
-        TestValidators.assert_valid_bytes_output(result, f"{format_name} optimize {optimize}")
+        TestValidators.assert_valid_bytes_output(
+            result, f"{format_name} optimize {optimize}"
+        )
         TestValidators.assert_config_preserved(handler, config, f"Optimize {optimize}")
 
     def test_complex_config_combinations(self, format_name, test_image):
@@ -323,8 +337,12 @@ class TestOutputHandlerConfiguration:
         handler = get_output_handler(format_name, complex_config)
 
         result = handler.get_bytes(test_image)
-        TestValidators.assert_valid_bytes_output(result, f"{format_name} complex config")
-        TestValidators.assert_config_preserved(handler, complex_config, "Complex config")
+        TestValidators.assert_valid_bytes_output(
+            result, f"{format_name} complex config"
+        )
+        TestValidators.assert_config_preserved(
+            handler, complex_config, "Complex config"
+        )
 
     def test_config_isolation_between_handlers(self, format_name):
         """Test that config changes don't affect other handlers."""
@@ -349,7 +367,9 @@ class TestOutputHandlerPerformance:
         from .conftest import TestConstants, TestValidators
 
         large_image = Image.new(
-            "RGB", (TestConstants.LARGE_IMAGE_DIMENSION, TestConstants.LARGE_IMAGE_DIMENSION), "blue"
+            "RGB",
+            (TestConstants.LARGE_IMAGE_DIMENSION, TestConstants.LARGE_IMAGE_DIMENSION),
+            "blue",
         )
 
         try:
@@ -373,8 +393,12 @@ class TestOutputHandlerPerformance:
         from .conftest import TestConstants, TestValidators
 
         result = output_handler.get_bytes(small_image)
-        TestValidators.assert_valid_bytes_output(result, f"Small image {output_handler.format_name}")
-        assert len(result) >= TestConstants.MIN_FILE_SIZE, f"Output too small: {len(result)} bytes"
+        TestValidators.assert_valid_bytes_output(
+            result, f"Small image {output_handler.format_name}"
+        )
+        assert len(result) >= TestConstants.MIN_FILE_SIZE, (
+            f"Output too small: {len(result)} bytes"
+        )
 
 
 class TestOutputHandlerConsistency:

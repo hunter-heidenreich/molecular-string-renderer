@@ -9,9 +9,15 @@ import logging
 import sys
 
 from molecular_string_renderer.cli.config_builder import create_configs
-from molecular_string_renderer.cli.handlers import handle_grid_rendering, handle_single_rendering
+from molecular_string_renderer.cli.handlers import (
+    handle_grid_rendering,
+    handle_single_rendering,
+)
 from molecular_string_renderer.cli.parser import create_parser
-from molecular_string_renderer.cli.validation import validate_input_arguments, validate_molecular_input
+from molecular_string_renderer.cli.validation import (
+    validate_input_arguments,
+    validate_molecular_input,
+)
 from molecular_string_renderer.core import get_supported_formats
 from molecular_string_renderer.exceptions import (
     CLIConfigurationError,

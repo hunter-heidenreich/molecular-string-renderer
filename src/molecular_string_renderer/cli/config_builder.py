@@ -60,7 +60,9 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
 
     # Validate dimensions
     if width < 100 or width > 2000:
-        raise CLIConfigurationError(f"Width must be between 100-2000 pixels, got {width}")
+        raise CLIConfigurationError(
+            f"Width must be between 100-2000 pixels, got {width}"
+        )
     if height < 100 or height > 2000:
         raise CLIConfigurationError(
             f"Height must be between 100-2000 pixels, got {height}"
@@ -72,7 +74,9 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
 
     # Validate quality
     if args.quality < 1 or args.quality > 100:
-        raise CLIConfigurationError(f"Quality must be between 1-100, got {args.quality}")
+        raise CLIConfigurationError(
+            f"Quality must be between 1-100, got {args.quality}"
+        )
 
     try:
         render_config = RenderConfig(

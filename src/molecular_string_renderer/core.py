@@ -5,171 +5,34 @@ Provides high-level functions that combine parsing, rendering, and output.
 """
 
 import logging
-import time
 from pathlib import Path
 
 from PIL import Image
 
 from molecular_string_renderer.config import OutputConfig, ParserConfig, RenderConfig
-from molecular_string_renderer.exceptions import (
-    ConfigurationError,
-    OutputError,
-    ParsingError,
-    RenderingError,
-    ValidationError,
-)
-from molecular_string_renderer.outputs import create_safe_filename, get_output_handler
+from molecular_string_renderer.config_utils import initialize_configurations
+from molecular_string_renderer.exceptions import ParsingError, RenderingError
+from molecular_string_renderer.logging_utils import logged_operation
 from molecular_string_renderer.parsers import get_parser
-from molecular_string_renderer.renderers import get_renderer
+from molecular_string_renderer.pipeline import RenderingPipeline
+from molecular_string_renderer.renderers import MoleculeGridRenderer
+from molecular_string_renderer.utils import (
+    ERROR_TEMPLATES,
+    filter_legends_by_indices,
+    format_parsing_errors,
+    parse_molecule_list,
+    validate_and_normalize_inputs,
+)
 from molecular_string_renderer.validation import (
-    validate_configuration_compatibility,
     validate_format_type,
     validate_grid_parameters,
+)
+from molecular_string_renderer.validation import (
     validate_molecular_string as validate_mol_string,
-    validate_output_path,
 )
 
 # Set up module-level logger
 logger = logging.getLogger(__name__)
-
-
-def _log_operation_start(
-    operation: str, details: dict[str, str | int] | None = None
-) -> float:
-    """
-    Log the start of a rendering operation and return start time.
-
-    Args:
-        operation: Name of the operation (e.g., 'render_molecule', 'parse')
-        details: Optional dictionary of operation details to log
-
-    Returns:
-        Start time for performance measurement
-    """
-    start_time = time.perf_counter()
-    detail_str = ""
-    if details:
-        detail_str = " | " + " | ".join(f"{k}={v}" for k, v in details.items())
-    logger.debug(f"Starting {operation}{detail_str}")
-    return start_time
-
-
-def _log_operation_end(operation: str, start_time: float, success: bool = True) -> None:
-    """
-    Log the end of a rendering operation with timing.
-
-    Args:
-        operation: Name of the operation that completed
-        start_time: Start time from _log_operation_start
-        success: Whether the operation succeeded
-    """
-    duration = time.perf_counter() - start_time
-    status = "completed" if success else "failed"
-    logger.debug(f"Operation {operation} {status} in {duration:.3f}s")
-    if duration > 5.0:  # Log slow operations at info level
-        logger.info(f"Slow operation: {operation} took {duration:.3f}s")
-
-
-def _initialize_configurations(
-    render_config: RenderConfig | None,
-    parser_config: ParserConfig | None,
-    output_config: OutputConfig | None,
-    output_format: str,
-) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
-    """
-    Initialize and coordinate configuration objects with defaults.
-
-    Ensures configuration consistency by auto-coordinating hydrogen display
-    settings between render and parser configurations.
-
-    Args:
-        render_config: Optional render configuration. If None, uses RenderConfig()
-        parser_config: Optional parser configuration. If None, uses ParserConfig()
-        output_config: Optional output configuration. If None, uses OutputConfig()
-        output_format: Output format for default output config (e.g., 'png', 'svg')
-
-    Returns:
-        Tuple of (render_config, parser_config, output_config) with proper coordination
-
-    Raises:
-        ConfigurationError: If configurations are incompatible
-
-    Example:
-        >>> render_cfg = RenderConfig(show_hydrogen=True)
-        >>> render_cfg, parser_cfg, output_cfg = _initialize_configurations(
-        ...     render_cfg, None, None, "png"
-        ... )
-        >>> parser_cfg.show_hydrogen  # Will be True to match render config
-        True
-    """
-    render_config = render_config or RenderConfig()
-    parser_config = parser_config or ParserConfig()
-    output_config = output_config or OutputConfig(format=output_format)
-
-    # Auto-coordinate hydrogen display settings
-    if render_config.show_hydrogen and not parser_config.show_hydrogen:
-        parser_config = ParserConfig(
-            sanitize=parser_config.sanitize,
-            show_hydrogen=True,  # Keep hydrogens for display
-            strict=parser_config.strict,
-        )
-
-    # Validate compatibility
-    validate_configuration_compatibility(render_config, parser_config, output_config)
-
-    return render_config, parser_config, output_config
-
-
-def _handle_output_saving(
-    image: Image.Image,
-    output_path: str | Path | None,
-    output_format: str,
-    output_config: OutputConfig,
-    mol=None,
-    auto_filename: bool = False,
-    molecular_string: str | None = None,
-) -> None:
-    """
-    Handle saving of rendered images with consistent logic.
-
-    Provides centralized output handling for both single molecules and grids,
-    with special handling for SVG vector rendering and automatic filename generation.
-
-    Args:
-        image: PIL Image to save. Must be a valid PIL Image object
-        output_path: Optional output path. If None, no saving occurs unless auto_filename=True
-        output_format: Output format (e.g., 'png', 'svg', 'jpg'). Must be supported format
-        output_config: Output configuration with quality, DPI, and format-specific settings
-        mol: Optional molecule object for SVG vector rendering. Required for true vector SVG
-        auto_filename: Whether to generate automatic filename if output_path is None
-        molecular_string: Source string for auto filename generation. Required if auto_filename=True
-
-    Raises:
-        OutputError: If saving fails due to file system issues or invalid parameters
-
-    Example:
-        >>> from PIL import Image
-        >>> img = Image.new('RGB', (100, 100), 'white')
-        >>> config = OutputConfig(format='png', quality=95)
-        >>> _handle_output_saving(img, 'molecule.png', 'png', config)
-        # Saves image to molecule.png with specified quality
-    """
-    if output_path or auto_filename:
-        output_handler = get_output_handler(output_format, output_config)
-
-        # For SVG output, provide the molecule for true vector rendering
-        if output_format.lower() == "svg" and mol is not None:
-            output_handler.set_molecule(mol)
-
-        if not output_path and auto_filename and molecular_string:
-            # Generate safe filename
-            base_name = create_safe_filename(
-                molecular_string, output_handler.file_extension
-            )
-            output_path = Path.cwd() / base_name
-
-        if output_path:
-            output_handler.save(image, output_path)
 
 
 def render_molecule(
@@ -246,92 +109,45 @@ def render_molecule(
         >>> images = [render_molecule(mol) for mol in molecules]
     """
     # Start performance timing
-    operation_start = _log_operation_start(
+    with logged_operation(
         "render_molecule",
         {
             "format": format_type,
             "output": output_format,
             "length": len(molecular_string) if molecular_string else 0,
         },
-    )
-
-    try:
-        # Validate inputs
-        validate_mol_string(molecular_string, format_type)
-        format_type = validate_format_type(
-            format_type, {"smiles", "smi", "inchi", "mol", "sdf", "selfies"}
-        )
-        output_path = validate_output_path(output_path)
-
+    ):
         # Initialize configurations with defaults
-        render_config, parser_config, output_config = _initialize_configurations(
+        render_config, parser_config, output_config = initialize_configurations(
             render_config, parser_config, output_config, output_format
         )
 
-        # Parse the molecular string
-        parse_start = _log_operation_start("parse", {"format": format_type})
-        try:
-            parser = get_parser(format_type, parser_config)
-            mol = parser.parse(molecular_string)
-            if mol is None:
-                raise ParsingError(
-                    f"Failed to parse {format_type.upper()}: '{molecular_string}'"
-                )
-            _log_operation_end("parse", parse_start, True)
-        except Exception as e:
-            _log_operation_end("parse", parse_start, False)
-            if isinstance(e, ParsingError):
-                raise
-            raise ParsingError(
-                f"Error parsing {format_type.upper()} '{molecular_string}': {e}"
-            ) from e
+        # Create pipeline for cleaner operation flow
+        pipeline = RenderingPipeline(render_config, parser_config, output_config)
 
-        # Render the molecule
-        render_start = _log_operation_start(
-            "render", {"size": f"{render_config.width}x{render_config.height}"}
+        # Validate inputs
+        _, format_type, output_path = pipeline.validate_inputs(
+            molecular_string, format_type, output_path
         )
-        try:
-            renderer = get_renderer("2d", render_config)
-            image = renderer.render(mol)
-            if image is None:
-                raise RenderingError("Renderer returned None image")
-            _log_operation_end("render", render_start, True)
-        except Exception as e:
-            _log_operation_end("render", render_start, False)
-            if isinstance(e, RenderingError):
-                raise
-            raise RenderingError(f"Error rendering molecule: {e}") from e
 
-        # Save if output path is provided or auto_filename is enabled
-        if output_path or auto_filename:
-            save_start = _log_operation_start("save", {"format": output_format})
-            try:
-                _handle_output_saving(
-                    image=image,
-                    output_path=output_path,
-                    output_format=output_format,
-                    output_config=output_config,
-                    mol=mol,
-                    auto_filename=auto_filename,
-                    molecular_string=molecular_string,
-                )
-                _log_operation_end("save", save_start, True)
-            except Exception as e:
-                _log_operation_end("save", save_start, False)
-                if isinstance(e, OutputError):
-                    raise
-                raise OutputError(f"Error saving output: {e}") from e
+        # Parse and render molecule
+        mol = pipeline.parse_molecule(molecular_string, format_type)
+        image = pipeline.render_molecule(mol)
 
-        _log_operation_end("render_molecule", operation_start, True)
+        # Save output if requested
+        pipeline.save_output(
+            image=image,
+            output_path=output_path,
+            output_format=output_format,
+            mol=mol,
+            auto_filename=auto_filename,
+            molecular_string=molecular_string,
+        )
+
         logger.info(
             f"Successfully rendered {format_type.upper()} to {output_format.upper()}"
         )
         return image
-
-    except Exception as e:
-        _log_operation_end("render_molecule", operation_start, False)
-        logger.error(f"Failed to render molecule: {e}")
-        raise
 
 
 def render_molecules_grid(
@@ -372,69 +188,50 @@ def render_molecules_grid(
     """
     # Validate inputs
     validate_grid_parameters(molecular_strings, mols_per_row, mol_size)
-    format_type = validate_format_type(
-        format_type, {"smiles", "smi", "inchi", "mol", "sdf", "selfies"}
+    _, format_type, output_path = validate_and_normalize_inputs(
+        format_type=format_type, output_path=output_path
     )
-    output_path = validate_output_path(output_path)
 
     # Validate legends if provided
     if legends is not None:
         if not isinstance(legends, list):
+            from molecular_string_renderer.exceptions import ValidationError
+
             raise ValidationError(
                 f"Legends must be a list, got {type(legends).__name__}"
             )
         if len(legends) != len(molecular_strings):
+            from molecular_string_renderer.exceptions import ValidationError
+
             raise ValidationError(
                 f"Number of legends ({len(legends)}) must match number of molecules ({len(molecular_strings)})"
             )
 
     # Initialize configurations
-    render_config, parser_config, output_config = _initialize_configurations(
+    render_config, parser_config, output_config = initialize_configurations(
         render_config, parser_config, output_config, output_format
     )
 
     # Parse all molecules
-    parser = get_parser(format_type, parser_config)
-    mols = []
-    valid_indices = []  # Track which molecules were successfully parsed
-    parsing_errors = []
-
-    for i, mol_string in enumerate(molecular_strings):
-        try:
-            validate_mol_string(mol_string, format_type)
-            mol = parser.parse(mol_string)
-            if mol is None:
-                parsing_errors.append(f"Index {i}: Failed to parse '{mol_string}'")
-                continue
-            mols.append(mol)
-            valid_indices.append(i)
-        except Exception as e:
-            parsing_errors.append(f"Index {i}: {e}")
-            logging.warning(
-                f"Failed to parse molecule at index {i} ('{mol_string}'): {e}"
-            )
+    mols, valid_indices, parsing_errors = parse_molecule_list(
+        molecular_strings, format_type, parser_config
+    )
 
     if not mols:
-        error_details = "; ".join(parsing_errors[:5])  # Show first 5 errors
-        if len(parsing_errors) > 5:
-            error_details += f" (and {len(parsing_errors) - 5} more errors)"
+        error_details = format_parsing_errors(parsing_errors)
         raise ParsingError(
-            f"No valid molecules could be parsed. Errors: {error_details}"
+            ERROR_TEMPLATES["no_valid_molecules"].format(details=error_details)
         )
 
     # Filter legends to match valid molecules if provided
     if legends and valid_indices:
-        filtered_legends = [legends[i] for i in valid_indices if i < len(legends)]
-        if len(filtered_legends) != len(mols):
-            logging.warning("Legend count mismatch after filtering, disabling legends")
-            legends = None
-        else:
-            legends = filtered_legends
+        legends = filter_legends_by_indices(
+            legends, valid_indices, len(molecular_strings)
+        )
 
-    try:
+    # Create and render grid
+    with logged_operation("grid_render"):
         # Create grid renderer
-        from molecular_string_renderer.renderers import MoleculeGridRenderer
-
         grid_renderer = MoleculeGridRenderer(
             config=render_config, mols_per_row=mols_per_row, mol_size=mol_size
         )
@@ -442,24 +239,19 @@ def render_molecules_grid(
         # Render grid
         image = grid_renderer.render_grid(mols, legends)
         if image is None:
-            raise RenderingError("Grid renderer returned None image")
-    except Exception as e:
-        if isinstance(e, RenderingError):
-            raise
-        raise RenderingError(f"Error rendering molecule grid: {e}") from e
+            raise RenderingError(ERROR_TEMPLATES["grid_renderer_none"])
 
-    try:
-        # Save if output path provided
-        _handle_output_saving(
-            image=image,
-            output_path=output_path,
-            output_format=output_format,
-            output_config=output_config,
-        )
-    except Exception as e:
-        if isinstance(e, OutputError):
-            raise
-        raise OutputError(f"Error saving grid output: {e}") from e
+    # Save if output path provided
+    if output_path:
+        with logged_operation("grid_save"):
+            from molecular_string_renderer.utils import handle_output_saving
+
+            handle_output_saving(
+                image=image,
+                output_path=output_path,
+                output_format=output_format,
+                output_config=output_config,
+            )
 
     return image
 
@@ -470,15 +262,41 @@ def validate_molecular_string(
     """
     Validate if a molecular string is valid for the given format.
 
+    This function performs lightweight validation without full parsing,
+    making it suitable for batch validation or input checking scenarios.
+    It combines format validation, basic string checks, and parser validation.
+
     Args:
-        molecular_string: String to validate
-        format_type: Format type to validate against
+        molecular_string: String to validate. Must not be empty or exceed 10,000 characters
+        format_type: Format type to validate against. Supported: 'smiles', 'smi',
+                    'inchi', 'mol', 'sdf', 'selfies'. Default: 'smiles'
 
     Returns:
-        True if valid, False otherwise
+        True if the molecular string is valid for the specified format,
+        False if parsing fails or the string is malformed
 
     Raises:
-        ValidationError: If input parameters are invalid
+        ValidationError: If input parameters are invalid (wrong types,
+                        unsupported format, empty string, etc.)
+
+    Example:
+        Basic validation:
+        >>> validate_molecular_string('CCO', 'smiles')  # ethanol
+        True
+        >>> validate_molecular_string('invalid_smiles', 'smiles')
+        False
+
+        Format validation:
+        >>> validate_molecular_string('InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3', 'inchi')
+        True
+        >>> validate_molecular_string('CCO', 'inchi')  # SMILES string as InChI
+        False
+
+        Batch validation:
+        >>> molecules = ['CCO', 'CC(=O)O', 'invalid', 'c1ccccc1']
+        >>> valid_mols = [mol for mol in molecules if validate_molecular_string(mol)]
+        >>> len(valid_mols)
+        3
     """
     try:
         validate_mol_string(molecular_string, format_type)
@@ -487,9 +305,18 @@ def validate_molecular_string(
         )
         parser = get_parser(format_type)
         return parser.validate(molecular_string)
-    except ValidationError:
-        raise  # Re-raise validation errors
     except Exception:
+        from molecular_string_renderer.exceptions import ValidationError
+
+        try:
+            validate_mol_string(molecular_string, format_type)
+            format_type = validate_format_type(
+                format_type, {"smiles", "smi", "inchi", "mol", "sdf", "selfies"}
+            )
+        except ValidationError:
+            raise  # Re-raise validation errors
+        except Exception:
+            return False
         return False
 
 
@@ -525,342 +352,3 @@ def get_supported_formats() -> dict[str, dict[str, str]]:
             "grid": "Grid layout for multiple molecules",
         },
     }
-
-
-class MolecularRenderer:
-    """
-    High-level class interface for molecular rendering.
-
-    Provides an object-oriented interface that maintains configuration
-    across multiple rendering operations with caching for improved performance.
-    """
-
-    def __init__(
-        self,
-        render_config: RenderConfig | None = None,
-        parser_config: ParserConfig | None = None,
-        output_config: OutputConfig | None = None,
-    ):
-        """
-        Initialize molecular renderer with configurations.
-
-        Args:
-            render_config: Configuration for rendering
-            parser_config: Configuration for parsing
-            output_config: Configuration for output
-
-        Raises:
-            ValidationError: If configurations are invalid
-        """
-        self.render_config = render_config or RenderConfig()
-        self.parser_config = parser_config or ParserConfig()
-        self.output_config = output_config or OutputConfig()
-
-        # Validate configurations
-        try:
-            # Test that configurations are valid by attempting to convert to dict
-            self.render_config.model_dump()
-            self.parser_config.model_dump()
-            self.output_config.model_dump()
-        except Exception as e:
-            raise ConfigurationError(f"Invalid configuration: {e}") from e
-
-        # Cache for parsers, renderers, and output handlers
-        self._parsers: dict[str, object] = {}
-        self._renderers: dict[str, object] = {}
-        self._output_handlers: dict[str, object] = {}
-
-        # Performance tracking
-        self._operation_count = 0
-        self._cache_hits = 0
-
-    def _get_cached_parser(self, format_type: str):
-        """Get cached parser or create new one."""
-        cache_key = f"{format_type}_{hash(str(self.parser_config.model_dump()))}"
-        if cache_key not in self._parsers:
-            self._parsers[cache_key] = get_parser(format_type, self.parser_config)
-        else:
-            self._cache_hits += 1
-        return self._parsers[cache_key]
-
-    def _get_cached_renderer(self, renderer_type: str):
-        """Get cached renderer or create new one."""
-        cache_key = f"{renderer_type}_{hash(str(self.render_config.model_dump()))}"
-        if cache_key not in self._renderers:
-            self._renderers[cache_key] = get_renderer(renderer_type, self.render_config)
-        else:
-            self._cache_hits += 1
-        return self._renderers[cache_key]
-
-    def _get_cached_output_handler(self, format_type: str):
-        """Get cached output handler or create new one."""
-        cache_key = f"{format_type}_{hash(str(self.output_config.model_dump()))}"
-        if cache_key not in self._output_handlers:
-            self._output_handlers[cache_key] = get_output_handler(
-                format_type, self.output_config
-            )
-        else:
-            self._cache_hits += 1
-        return self._output_handlers[cache_key]
-
-    def render(
-        self,
-        molecular_string: str,
-        format_type: str = "smiles",
-        output_format: str = "png",
-        output_path: str | Path | None = None,
-    ) -> Image.Image:
-        """
-        Render a molecular string using the configured settings.
-
-        Args:
-            molecular_string: Molecular string to render
-            format_type: Input format type
-            output_format: Output format type
-            output_path: Optional output path
-
-        Returns:
-            PIL Image object
-
-        Raises:
-            ValidationError: If input parameters are invalid
-            ParsingError: If molecular string cannot be parsed
-            RenderingError: If molecule cannot be rendered
-            OutputError: If image cannot be saved
-        """
-        self._operation_count += 1
-
-        # Validate inputs
-        validate_mol_string(molecular_string, format_type)
-        format_type = validate_format_type(
-            format_type, {"smiles", "smi", "inchi", "mol", "sdf", "selfies"}
-        )
-        output_path = validate_output_path(output_path)
-
-        try:
-            # Use cached parser
-            parser = self._get_cached_parser(format_type)
-            mol = parser.parse(molecular_string)
-            if mol is None:
-                raise ParsingError(
-                    f"Failed to parse {format_type.upper()}: '{molecular_string}'"
-                )
-        except Exception as e:
-            if isinstance(e, ParsingError):
-                raise
-            raise ParsingError(
-                f"Error parsing {format_type.upper()} '{molecular_string}': {e}"
-            ) from e
-
-        try:
-            # Use cached renderer
-            renderer = self._get_cached_renderer("2d")
-            image = renderer.render(mol)
-            if image is None:
-                raise RenderingError("Renderer returned None image")
-        except Exception as e:
-            if isinstance(e, RenderingError):
-                raise
-            raise RenderingError(f"Error rendering molecule: {e}") from e
-
-        try:
-            # Save if output path provided
-            if output_path:
-                output_handler = self._get_cached_output_handler(output_format)
-                if output_format.lower() == "svg" and mol is not None:
-                    output_handler.set_molecule(mol)
-                output_handler.save(image, output_path)
-        except Exception as e:
-            if isinstance(e, OutputError):
-                raise
-            raise OutputError(f"Error saving output: {e}") from e
-
-        return image
-
-    def render_grid(
-        self,
-        molecular_strings: list[str],
-        format_type: str = "smiles",
-        output_format: str = "png",
-        output_path: str | Path | None = None,
-        legends: list[str] | None = None,
-        mols_per_row: int = 4,
-    ) -> Image.Image:
-        """
-        Render multiple molecules in a grid.
-
-        Args:
-            molecular_strings: List of molecular strings
-            format_type: Input format type
-            output_format: Output format type
-            output_path: Optional output path
-            legends: Optional legends
-            mols_per_row: Molecules per row
-
-        Returns:
-            PIL Image object
-
-        Raises:
-            ValidationError: If input parameters are invalid
-            ParsingError: If molecular strings cannot be parsed
-            RenderingError: If molecules cannot be rendered
-            OutputError: If image cannot be saved
-        """
-        self._operation_count += 1
-
-        # Use standard mol_size for cached renderer class
-        mol_size = (200, 200)
-
-        # Validate inputs
-        validate_grid_parameters(molecular_strings, mols_per_row, mol_size)
-        format_type = validate_format_type(
-            format_type, {"smiles", "smi", "inchi", "mol", "sdf", "selfies"}
-        )
-        output_path = validate_output_path(output_path)
-
-        if legends is not None:
-            if not isinstance(legends, list):
-                raise ValidationError(
-                    f"Legends must be a list, got {type(legends).__name__}"
-                )
-            if len(legends) != len(molecular_strings):
-                raise ValidationError(
-                    f"Number of legends ({len(legends)}) must match number of molecules ({len(molecular_strings)})"
-                )
-
-        # Parse molecules using cached parser
-        parser = self._get_cached_parser(format_type)
-        mols = []
-        valid_indices = []
-        parsing_errors = []
-
-        for i, mol_string in enumerate(molecular_strings):
-            try:
-                validate_mol_string(mol_string, format_type)
-                mol = parser.parse(mol_string)
-                if mol is None:
-                    parsing_errors.append(f"Index {i}: Failed to parse '{mol_string}'")
-                    continue
-                mols.append(mol)
-                valid_indices.append(i)
-            except Exception as e:
-                parsing_errors.append(f"Index {i}: {e}")
-                logging.warning(
-                    f"Failed to parse molecule at index {i} ('{mol_string}'): {e}"
-                )
-
-        if not mols:
-            error_details = "; ".join(parsing_errors[:5])
-            if len(parsing_errors) > 5:
-                error_details += f" (and {len(parsing_errors) - 5} more errors)"
-            raise ParsingError(
-                f"No valid molecules could be parsed. Errors: {error_details}"
-            )
-
-        # Filter legends if needed
-        if legends and valid_indices:
-            filtered_legends = [legends[i] for i in valid_indices if i < len(legends)]
-            if len(filtered_legends) != len(mols):
-                logging.warning(
-                    "Legend count mismatch after filtering, disabling legends"
-                )
-                legends = None
-            else:
-                legends = filtered_legends
-
-        try:
-            # Create and use grid renderer (not cached due to varying parameters)
-            from molecular_string_renderer.renderers import MoleculeGridRenderer
-
-            grid_renderer = MoleculeGridRenderer(
-                config=self.render_config, mols_per_row=mols_per_row, mol_size=mol_size
-            )
-            image = grid_renderer.render_grid(mols, legends)
-            if image is None:
-                raise RenderingError("Grid renderer returned None image")
-        except Exception as e:
-            if isinstance(e, RenderingError):
-                raise
-            raise RenderingError(f"Error rendering molecule grid: {e}") from e
-
-        try:
-            # Save if output path provided
-            if output_path:
-                output_handler = self._get_cached_output_handler(output_format)
-                output_handler.save(image, output_path)
-        except Exception as e:
-            if isinstance(e, OutputError):
-                raise
-            raise OutputError(f"Error saving grid output: {e}") from e
-
-        return image
-
-    def update_config(
-        self,
-        render_config: RenderConfig | None = None,
-        parser_config: ParserConfig | None = None,
-        output_config: OutputConfig | None = None,
-    ) -> None:
-        """
-        Update renderer configurations.
-
-        Args:
-            render_config: New render configuration
-            parser_config: New parser configuration
-            output_config: New output configuration
-
-        Raises:
-            ConfigurationError: If new configurations are invalid
-        """
-        # Validate new configurations before updating
-        if render_config:
-            try:
-                render_config.model_dump()
-            except Exception as e:
-                raise ConfigurationError(f"Invalid render configuration: {e}") from e
-            self.render_config = render_config
-
-        if parser_config:
-            try:
-                parser_config.model_dump()
-            except Exception as e:
-                raise ConfigurationError(f"Invalid parser configuration: {e}") from e
-            self.parser_config = parser_config
-
-        if output_config:
-            try:
-                output_config.model_dump()
-            except Exception as e:
-                raise ConfigurationError(f"Invalid output configuration: {e}") from e
-            self.output_config = output_config
-
-        # Clear caches when config changes to ensure consistency
-        self._parsers.clear()
-        self._renderers.clear()
-        self._output_handlers.clear()
-
-    def get_stats(self) -> dict[str, int]:
-        """
-        Get performance statistics for this renderer instance.
-
-        Returns:
-            Dictionary with operation count and cache statistics
-        """
-        return {
-            "operations": self._operation_count,
-            "cache_hits": self._cache_hits,
-            "cache_efficiency": (
-                round(self._cache_hits / max(1, self._operation_count) * 100, 1)
-                if self._operation_count > 0
-                else 0.0
-            ),
-            "cached_parsers": len(self._parsers),
-            "cached_renderers": len(self._renderers),
-            "cached_output_handlers": len(self._output_handlers),
-        }
-
-    def clear_cache(self) -> None:
-        """Clear all cached objects to free memory."""
-        self._parsers.clear()
-        self._renderers.clear()
-        self._output_handlers.clear()
