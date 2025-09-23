@@ -68,10 +68,10 @@ class RenderingPipeline:
 
     def parse_molecule(self, molecular_string: str, format_type: str) -> Any:
         """
-        Parse a single molecular string.
+        Parse a molecular string using the appropriate parser.
 
         Args:
-            molecular_string: String to parse
+            molecular_string: String representation of molecule
             format_type: Format type for parsing
 
         Returns:
@@ -83,13 +83,18 @@ class RenderingPipeline:
         from molecular_string_renderer.logging_utils import logged_operation
 
         with logged_operation("parse", {"format": format_type}):
-            parser = get_parser(format_type, self.parser_config)
-            mol = parser.parse(molecular_string)
-            if mol is None:
+            try:
+                parser = get_parser(format_type, self.parser_config)
+                mol = parser.parse(molecular_string)
+                if mol is None:
+                    raise ParsingError(
+                        f"Failed to parse {format_type.upper()}: '{molecular_string}'"
+                    )
+                return mol
+            except (ValueError, TypeError) as e:
                 raise ParsingError(
-                    f"Failed to parse {format_type.upper()}: '{molecular_string}'"
-                )
-            return mol
+                    f"Failed to parse {format_type.upper()}: '{molecular_string}' - {str(e)}"
+                ) from e
 
     def render_molecule(self, mol: Any) -> Image.Image:
         """
@@ -110,11 +115,14 @@ class RenderingPipeline:
             "render",
             {"size": f"{self.render_config.width}x{self.render_config.height}"},
         ):
-            renderer = get_renderer("2d", self.render_config)
-            image = renderer.render(mol)
-            if image is None:
-                raise RenderingError("Renderer returned None image")
-            return image
+            try:
+                renderer = get_renderer("2d", self.render_config)
+                image = renderer.render(mol)
+                if image is None:
+                    raise RenderingError("Renderer returned None image")
+                return image
+            except (ValueError, TypeError) as e:
+                raise RenderingError(f"Failed to render molecule: {str(e)}") from e
 
     def save_output(
         self,
