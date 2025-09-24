@@ -69,6 +69,11 @@ mol-render --grid "CCO,CC(=O)O,C1=CC=CC=C1,C" --mols-per-row 2  # 2x2 layout
 
 # Custom styling
 mol-render "CCO" --size 800 --background-color "#f0f0f0" --show-hydrogen
+
+# Utility commands
+mol-render --list-formats                             # Show all supported input/output formats
+mol-render "CCO" --validate                           # Validate molecule without rendering
+mol-render "CCO" --no-optimize --no-lossless          # Disable optimization and lossless compression
 ```
 
 ### Python API
