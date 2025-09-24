@@ -523,6 +523,42 @@ class TestMolecularRenderer:
         with pytest.raises(RenderingError, match="Error rendering molecule"):
             renderer.render("CCO", "smiles")
 
+    def test_render_grid_smart_default_mols_per_row(self):
+        """Test that render_grid uses smart default for mols_per_row."""
+        renderer = MolecularRenderer()
+        
+        # Test with 3 molecules - should create instance with mols_per_row=3
+        molecules = ["CCO", "CC(=O)O", "C1=CC=CC=C1"]
+        result = renderer.render_grid(molecules)
+        
+        # Should be a valid image with correct dimensions
+        assert isinstance(result, Image.Image)
+        # Width should be 3 * 200 = 600 (not 4 * 200 = 800)
+        assert result.size[0] == 600
+        assert result.size[1] == 200
+
+        # Test with 5 molecules - should create instance with mols_per_row=4 (max)
+        molecules_5 = ["CCO", "CC(=O)O", "C1=CC=CC=C1", "C", "CC"]
+        result_5 = renderer.render_grid(molecules_5)
+        
+        assert isinstance(result_5, Image.Image)
+        # Width should be 4 * 200 = 800 (max), height 2 rows = 400
+        assert result_5.size[0] == 800
+        assert result_5.size[1] == 400
+
+    def test_render_grid_explicit_mols_per_row_overrides_smart(self):
+        """Test that explicit mols_per_row overrides smart default."""
+        renderer = MolecularRenderer()
+        
+        molecules = ["CCO", "CC(=O)O", "C1=CC=CC=C1"]
+        # Explicit 2 per row should override smart default of 3
+        result = renderer.render_grid(molecules, mols_per_row=2)
+        
+        assert isinstance(result, Image.Image)
+        # Should be 2 * 200 = 400 wide, 2 rows = 400 tall
+        assert result.size[0] == 400
+        assert result.size[1] == 400
+
 
 class TestMolecularRendererIntegration:
     """Integration tests for MolecularRenderer with real dependencies."""

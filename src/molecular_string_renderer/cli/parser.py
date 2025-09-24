@@ -159,8 +159,8 @@ Common molecular formats:
     grid_group.add_argument(
         "--mols-per-row",
         type=int,
-        default=4,
-        help="Number of molecules per row in grid (default: 4)",
+        default=None,
+        help="Number of molecules per row in grid (default: auto-fits to molecule count, max 4)",
     )
 
     grid_group.add_argument(
@@ -185,6 +185,18 @@ Common molecular formats:
         "--no-optimize",
         action="store_true",
         help="Disable output optimization",
+    )
+
+    quality_group.add_argument(
+        "--lossless",
+        action="store_true",
+        help="Use lossless compression (WebP only, default: true)",
+    )
+
+    quality_group.add_argument(
+        "--no-lossless",
+        action="store_true",
+        help="Use lossy compression (WebP only)",
     )
 
     # Utility options

@@ -156,11 +156,12 @@ def render_molecules_grid(
     output_format: str = "png",
     output_path: str | Path | None = None,
     legends: list[str] | None = None,
-    mols_per_row: int = 4,
+    mols_per_row: int | None = None,
     mol_size: tuple[int, int] = (200, 200),
     render_config: RenderConfig | None = None,
     parser_config: ParserConfig | None = None,
     output_config: OutputConfig | None = None,
+    auto_filename: bool = True,
 ) -> Image.Image:
     """
     Render multiple molecules in a grid layout.
@@ -171,11 +172,12 @@ def render_molecules_grid(
         output_format: Output image format ('png', 'svg', 'jpg')
         output_path: Path to save image (optional)
         legends: Optional legends for each molecule
-        mols_per_row: Number of molecules per row
+        mols_per_row: Number of molecules per row (default: auto-fits to molecule count, max 4)
         mol_size: Size of each molecule image (width, height)
         render_config: Configuration for rendering
         parser_config: Configuration for parsing
         output_config: Configuration for output
+        auto_filename: Generate safe filename if output_path=None. Default: True
 
     Returns:
         PIL Image object containing the molecule grid
@@ -186,6 +188,11 @@ def render_molecules_grid(
         RenderingError: If molecules cannot be rendered
         OutputError: If image cannot be saved
     """
+    # Smart default for mols_per_row: auto-fit to molecule count with max of 4
+    if mols_per_row is None:
+        mols_per_row = min(len(molecular_strings), 4)
+        logger.debug(f"Using smart default mols_per_row={mols_per_row} for {len(molecular_strings)} molecules")
+    
     # Validate inputs
     validate_grid_parameters(molecular_strings, mols_per_row, mol_size)
     _, format_type, output_path = validate_and_normalize_inputs(
@@ -241,16 +248,21 @@ def render_molecules_grid(
         if image is None:
             raise RenderingError(ERROR_TEMPLATES["grid_renderer_none"])
 
-    # Save if output path provided
-    if output_path:
+    # Save if output path provided or auto_filename enabled
+    if output_path or auto_filename:
         with logged_operation("grid_save"):
             from molecular_string_renderer.utils import handle_output_saving
+
+            # Generate a representative string for the grid for auto filename
+            grid_string = f"grid_{len(molecular_strings)}_molecules" if auto_filename else None
 
             handle_output_saving(
                 image=image,
                 output_path=output_path,
                 output_format=output_format,
                 output_config=output_config,
+                auto_filename=auto_filename,
+                molecular_string=grid_string,
             )
 
     return image

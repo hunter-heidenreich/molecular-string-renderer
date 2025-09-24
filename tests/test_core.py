@@ -302,7 +302,7 @@ class TestRenderMoleculesGrid:
         """Test render_molecules_grid with default parameters."""
         molecules = ["CCO", "CC(=O)O", "c1ccccc1"]
 
-        image = render_molecules_grid(molecules)
+        image = render_molecules_grid(molecules, auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -317,7 +317,7 @@ class TestRenderMoleculesGrid:
             "CCC",  # propane
         ]
 
-        image = render_molecules_grid(molecules)
+        image = render_molecules_grid(molecules, auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -326,7 +326,7 @@ class TestRenderMoleculesGrid:
         molecules = ["CCO", "CC(=O)O", "c1ccccc1"]
         legends = ["Ethanol", "Acetic Acid", "Benzene"]
 
-        image = render_molecules_grid(molecules, legends=legends)
+        image = render_molecules_grid(molecules, legends=legends, auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -334,7 +334,7 @@ class TestRenderMoleculesGrid:
         """Test render_molecules_grid with custom layout parameters."""
         molecules = ["CCO", "CC(=O)O", "c1ccccc1", "C", "CC", "CCC"]
 
-        image = render_molecules_grid(molecules, mols_per_row=3, mol_size=(150, 150))
+        image = render_molecules_grid(molecules, mols_per_row=3, mol_size=(150, 150), auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -346,7 +346,7 @@ class TestRenderMoleculesGrid:
             "InChI=1S/CH4/h1H4",  # methane
         ]
 
-        image = render_molecules_grid(inchi_molecules, format_type="inchi")
+        image = render_molecules_grid(inchi_molecules, format_type="inchi", auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -375,6 +375,7 @@ class TestRenderMoleculesGrid:
             render_config=render_config,
             parser_config=parser_config,
             output_config=output_config,
+            auto_filename=False,
         )
 
         assert isinstance(image, Image.Image)
@@ -386,7 +387,7 @@ class TestRenderMoleculesGrid:
 
     def test_render_molecules_grid_single_molecule(self):
         """Test render_molecules_grid with single molecule."""
-        image = render_molecules_grid(["CCO"])
+        image = render_molecules_grid(["CCO"], auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -396,7 +397,7 @@ class TestRenderMoleculesGrid:
         molecules = ["CCO", "INVALID_SMILES", "CC(=O)O"]
 
         # Should still work with valid molecules
-        image = render_molecules_grid(molecules)
+        image = render_molecules_grid(molecules, auto_filename=False)
         assert isinstance(image, Image.Image)
 
     def test_render_molecules_grid_all_invalid_molecules(self):
@@ -438,7 +439,7 @@ class TestRenderMoleculesGrid:
         # Create a grid with many molecules
         molecules = ["C"] * 20  # 20 methane molecules
 
-        image = render_molecules_grid(molecules, mols_per_row=5, mol_size=(100, 100))
+        image = render_molecules_grid(molecules, mols_per_row=5, mol_size=(100, 100), auto_filename=False)
 
         assert isinstance(image, Image.Image)
 
@@ -473,7 +474,7 @@ class TestRenderMoleculesGrid:
         legends = ["Ethanol", "Invalid1", "Acetic Acid", "Invalid2", "Benzene"]
 
         # This should work - valid molecules will be rendered with corresponding legends
-        image = render_molecules_grid(molecules, legends=legends)
+        image = render_molecules_grid(molecules, legends=legends, auto_filename=False)
         assert isinstance(image, Image.Image)
 
     def test_render_molecules_grid_different_output_formats(self):
@@ -482,8 +483,49 @@ class TestRenderMoleculesGrid:
         output_formats = ["png", "svg", "jpg"]
 
         for output_format in output_formats:
-            image = render_molecules_grid(molecules, output_format=output_format)
+            image = render_molecules_grid(molecules, output_format=output_format, auto_filename=False)
             assert isinstance(image, Image.Image)
+
+    def test_render_molecules_grid_smart_default_mols_per_row(self):
+        """Test smart default behavior for mols_per_row."""
+        # Test with 3 molecules (should auto-fit to 3, not default 4)
+        molecules_3 = ["CCO", "CC(=O)O", "C1=CC=CC=C1"]
+        image_3 = render_molecules_grid(molecules_3, auto_filename=False)
+        assert isinstance(image_3, Image.Image)
+        # Should be 3 molecules wide (600px), not 4 wide (800px)
+        assert image_3.size[0] == 600  # 3 * 200px per molecule
+        assert image_3.size[1] == 200  # 1 row
+
+        # Test with 5 molecules (should auto-fit to 4, not 5)
+        molecules_5 = ["CCO", "CC(=O)O", "C1=CC=CC=C1", "C", "CC"]
+        image_5 = render_molecules_grid(molecules_5, auto_filename=False)
+        assert isinstance(image_5, Image.Image)
+        # Should be 4 molecules wide (max), requiring 2 rows
+        assert image_5.size[0] == 800  # 4 * 200px per molecule (max)
+        assert image_5.size[1] == 400  # 2 rows
+
+        # Test with 1 molecule (should auto-fit to 1)
+        molecules_1 = ["CCO"]
+        image_1 = render_molecules_grid(molecules_1, auto_filename=False)
+        assert isinstance(image_1, Image.Image)
+        assert image_1.size[0] == 200  # 1 * 200px per molecule
+        assert image_1.size[1] == 200  # 1 row
+
+    def test_render_molecules_grid_explicit_mols_per_row_overrides_smart(self):
+        """Test that explicit mols_per_row overrides smart default."""
+        molecules = ["CCO", "CC(=O)O", "C1=CC=CC=C1"]
+        
+        # Explicit 2 per row should create 2x2 grid (with empty slot)
+        image = render_molecules_grid(molecules, mols_per_row=2, auto_filename=False)
+        assert isinstance(image, Image.Image)
+        assert image.size[0] == 400  # 2 * 200px per molecule
+        assert image.size[1] == 400  # 2 rows (3 molecules, 2 per row = 2 rows)
+
+        # Explicit 1 per row should create 1x3 grid
+        image = render_molecules_grid(molecules, mols_per_row=1, auto_filename=False)
+        assert isinstance(image, Image.Image)
+        assert image.size[0] == 200  # 1 * 200px per molecule
+        assert image.size[1] == 600  # 3 rows
 
 
 class TestValidateMolecularString:
@@ -810,7 +852,7 @@ class TestCoreIntegration:
         assert isinstance(image, Image.Image)
 
         # Render grid
-        grid_image = render_molecules_grid(["CCO", "CC(=O)O"], format_type=input_format)
+        grid_image = render_molecules_grid(["CCO", "CC(=O)O"], format_type=input_format, auto_filename=False)
         assert isinstance(grid_image, Image.Image)
 
     def test_error_consistency_across_functions(self):
@@ -848,6 +890,7 @@ class TestCoreIntegration:
             render_config=render_config,
             parser_config=parser_config,
             output_config=output_config,
+            auto_filename=False,
         )
 
         assert isinstance(image1, Image.Image)
@@ -935,7 +978,7 @@ class TestCoreIntegration:
                 assert isinstance(image, Image.Image)
 
         # Grid rendering
-        grid_image = render_molecules_grid(molecules[:3])
+        grid_image = render_molecules_grid(molecules[:3], auto_filename=False)
         assert isinstance(grid_image, Image.Image)
 
 
@@ -1015,5 +1058,5 @@ class TestCoreErrorHandling:
             render_molecules_grid([])  # This should fail
 
         # Next operation should still work
-        grid_image = render_molecules_grid(["CCO"])
+        grid_image = render_molecules_grid(["CCO"], auto_filename=False)
         assert isinstance(grid_image, Image.Image)

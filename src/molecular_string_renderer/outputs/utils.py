@@ -292,9 +292,9 @@ def build_save_kwargs(format_info: FormatInfo, config: OutputConfig) -> dict[str
         if format_info.pil_format == "JPEG" and config.progressive:
             kwargs["progressive"] = True
 
-        # Lossless WebP support
-        if format_info.pil_format == "WEBP" and config.lossless:
-            kwargs["lossless"] = True
+        # Lossless WebP support - explicitly set for both cases
+        if format_info.pil_format == "WEBP":
+            kwargs["lossless"] = config.lossless
 
     elif config.optimize:
         kwargs["optimize"] = True

@@ -19,7 +19,7 @@ mol-render "CCO" -o ethanol.png  # Creates ethanol molecule image
 - **Flexible Output**: PNG, SVG, JPEG, PDF, WebP, TIFF, and BMP output formats with customizable quality
 - **Modular Architecture**: Extensible design for adding new parsers and renderers
 - **High-Quality Rendering**: Publication-ready 2D molecular structure images
-- **Grid Layouts**: Render multiple molecules in organized grids
+- **Grid Layouts**: Render multiple molecules in organized grids with smart auto-fitting
 - **Command-Line Interface**: Easy-to-use CLI for batch processing
 - **Python API**: Programmatic access with comprehensive configuration options
 
@@ -64,6 +64,9 @@ mol-render "[C][C][O]" --format selfies
 # Grid of molecules
 mol-render --grid "CCO,CC(=O)O,C1=CC=CC=C1" --legends "Ethanol,Acetic acid,Benzene"
 
+# Grid auto-fits to 3x1 layout (smart default). For explicit control:
+mol-render --grid "CCO,CC(=O)O,C1=CC=CC=C1,C" --mols-per-row 2  # 2x2 layout
+
 # Custom styling
 mol-render "CCO" --size 800 --background-color "#f0f0f0" --show-hydrogen
 ```
@@ -99,7 +102,7 @@ legends = ["Ethanol", "Acetic Acid", "Benzene"]
 grid_image = render_molecules_grid(
     molecular_strings=molecules,
     legends=legends,
-    mols_per_row=3,
+    # mols_per_row auto-fits to 3 (min of molecule count and default max of 4)
     output_path="molecules_grid.png"
 )
 
@@ -156,14 +159,13 @@ grid = renderer.render_grid(molecules, legends=["Ethanol", "Acetic Acid", "Benze
 from molecular_string_renderer import RenderConfig
 
 config = RenderConfig(
-    width=500,                    # Image width in pixels
-    height=500,                   # Image height in pixels
+    width=500,                    # Image width in pixels (100-2000)
+    height=500,                   # Image height in pixels (100-2000)
     background_color="white",     # Background color (name or hex)
-    dpi=150,                      # DPI for high-quality output
     show_hydrogen=False,          # Show explicit hydrogens
     show_carbon=False,            # Show carbon labels
-    highlight_atoms=None,         # Atoms to highlight
-    highlight_bonds=None,         # Bonds to highlight
+    highlight_atoms=None,         # List of atom indices to highlight
+    highlight_bonds=None,         # List of bond indices to highlight
 )
 ```
 
@@ -175,7 +177,7 @@ from molecular_string_renderer import ParserConfig
 parser_config = ParserConfig(
     sanitize=True,                # Sanitize molecules after parsing
     show_hydrogen=False,          # Show explicit hydrogens (controls hydrogen removal)
-)
+    strict=False,                 # Use strict parsing mode
 )
 ```
 
@@ -188,7 +190,24 @@ output_config = OutputConfig(
     format="png",                 # Output format
     quality=95,                   # Quality (1-100)
     optimize=True,                # Optimize file size
+    dpi=150,                      # DPI for high-quality output (72-600)
+    progressive=False,            # Use progressive encoding (JPEG)
+    lossless=True,                # Use lossless compression (WebP)
+    metadata=None,                # Metadata to embed in output files
     svg_sanitize=True,            # Sanitize SVG output for security
+    svg_use_vector=True,          # Use true vector SVG rendering when possible
+    svg_line_width_mult=1.0,      # Line width multiplier for SVG rendering
+)
+
+# Example with metadata
+output_config_with_metadata = OutputConfig(
+    format="pdf",
+    metadata={
+        "Title": "Molecular Structure",
+        "Author": "Research Team",
+        "Subject": "Chemical Compound Analysis",
+        "Creator": "Molecular String Renderer"
+    }
 )
 ```
 
@@ -308,6 +327,11 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ### Version 0.2.0
 - Enhanced SELFIES support with improved parsing
+- **New configuration options**: Added `dpi`, `progressive`, `lossless`, `metadata`, `svg_sanitize`, `svg_use_vector`, and `svg_line_width_mult` to OutputConfig
+- **Enhanced SVG support**: True vector SVG rendering with configurable generation strategies and line width control
+- **PDF metadata support**: Embed custom metadata in PDF outputs
+- **Advanced image optimization**: Progressive JPEG and lossless WebP support
+- **DPI control**: Configurable DPI settings for high-quality output (72-600 range)
 - Proper SVG rendering with better quality output
 - Additional testing and validation improvements
 - Code simplifications and optimizations

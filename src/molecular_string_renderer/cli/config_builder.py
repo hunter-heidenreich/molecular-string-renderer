@@ -78,6 +78,17 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
             f"Quality must be between 1-100, got {args.quality}"
         )
 
+    # Determine lossless setting
+    if hasattr(args, 'lossless') and hasattr(args, 'no_lossless') and args.lossless and args.no_lossless:
+        raise CLIConfigurationError("Cannot specify both --lossless and --no-lossless")
+    
+    # Default to lossless=True, unless --no-lossless is specified
+    lossless = True
+    if hasattr(args, 'no_lossless') and args.no_lossless:
+        lossless = False
+    elif hasattr(args, 'lossless') and args.lossless:
+        lossless = True
+
     try:
         render_config = RenderConfig(
             width=width,
@@ -99,6 +110,7 @@ def create_configs(args) -> tuple[RenderConfig, ParserConfig, OutputConfig]:
             quality=args.quality,
             optimize=not args.no_optimize,
             dpi=args.dpi,
+            lossless=lossless,
         )
     except Exception as e:
         raise CLIConfigurationError(f"Failed to create configuration: {e}") from e

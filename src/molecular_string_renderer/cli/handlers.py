@@ -44,6 +44,12 @@ def handle_grid_rendering(args, render_config, parser_config, output_config) -> 
     if not molecular_strings:
         raise CLIValidationError("No valid molecular strings found in grid input")
 
+    # Smart default for mols_per_row: auto-fit to molecule count with max of 4
+    mols_per_row = args.mols_per_row
+    if mols_per_row is None:
+        mols_per_row = min(len(molecular_strings), 4)
+        logger.debug(f"Using smart default mols_per_row={mols_per_row} for {len(molecular_strings)} molecules")
+
     # Parse legends if provided
     legends = None
     if args.legends:
@@ -60,7 +66,7 @@ def handle_grid_rendering(args, render_config, parser_config, output_config) -> 
             input_format=args.input_format,
             output_config=output_config,
             molecule_count=len(molecular_strings),
-            mols_per_row=args.mols_per_row,
+            mols_per_row=mols_per_row,
         )
 
     try:
@@ -70,15 +76,21 @@ def handle_grid_rendering(args, render_config, parser_config, output_config) -> 
             output_format=output_config.format,
             output_path=args.output,
             legends=legends,
-            mols_per_row=args.mols_per_row,
+            mols_per_row=mols_per_row,
             mol_size=(args.mol_size, args.mol_size),
             render_config=render_config,
             parser_config=parser_config,
             output_config=output_config,
+            auto_filename=args.auto_filename and not args.output,
         )
 
-        if args.output:
-            logger.info(f"Grid successfully saved to: {args.output}")
+        if args.output or args.auto_filename:
+            from molecular_string_renderer.outputs.utils import create_safe_filename
+
+            output_file = args.output or create_safe_filename(
+                f"grid_{len(molecular_strings)}_molecules", f".{output_config.format}"
+            )
+            logger.info(f"Grid successfully saved to: {output_file}")
         else:
             logger.info("Grid rendered successfully (no output file specified)")
 
