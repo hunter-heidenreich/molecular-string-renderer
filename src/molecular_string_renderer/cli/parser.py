@@ -88,7 +88,18 @@ Common molecular formats:
     output_group.add_argument(
         "--output-format",
         type=str,
-        choices=["png", "svg", "jpg", "jpeg", "pdf", "webp", "tiff", "tif", "bmp", "gif"],
+        choices=[
+            "png",
+            "svg",
+            "jpg",
+            "jpeg",
+            "pdf",
+            "webp",
+            "tiff",
+            "tif",
+            "bmp",
+            "gif",
+        ],
         help="Output image format (default: inferred from filename or png)",
     )
 

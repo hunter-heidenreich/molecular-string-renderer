@@ -112,8 +112,8 @@ FORMAT_MODE_BEHAVIOR = {
     },
     "gif": {
         "RGBA": "P",  # GIF converts RGBA to P mode with palette
-        "RGB": "P",   # GIF converts RGB to P mode for optimal compression
-        "LA": "P",    # GIF converts LA to P mode
+        "RGB": "P",  # GIF converts RGB to P mode for optimal compression
+        "LA": "P",  # GIF converts LA to P mode
     },
     # PNG, WEBP, TIFF preserve transparency by default
     # SVG and PDF handle transparency through their own mechanisms

@@ -240,7 +240,9 @@ class MolecularRenderer:
         # Smart default for mols_per_row: auto-fit to molecule count with max of 4
         if mols_per_row is None:
             mols_per_row = min(len(molecular_strings), 4)
-            logger.debug(f"Using smart default mols_per_row={mols_per_row} for {len(molecular_strings)} molecules")
+            logger.debug(
+                f"Using smart default mols_per_row={mols_per_row} for {len(molecular_strings)} molecules"
+            )
 
         # Validate inputs
         validate_grid_parameters(molecular_strings, mols_per_row, mol_size)

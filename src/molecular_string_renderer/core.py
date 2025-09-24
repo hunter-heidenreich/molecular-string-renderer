@@ -191,8 +191,10 @@ def render_molecules_grid(
     # Smart default for mols_per_row: auto-fit to molecule count with max of 4
     if mols_per_row is None:
         mols_per_row = min(len(molecular_strings), 4)
-        logger.debug(f"Using smart default mols_per_row={mols_per_row} for {len(molecular_strings)} molecules")
-    
+        logger.debug(
+            f"Using smart default mols_per_row={mols_per_row} for {len(molecular_strings)} molecules"
+        )
+
     # Validate inputs
     validate_grid_parameters(molecular_strings, mols_per_row, mol_size)
     _, format_type, output_path = validate_and_normalize_inputs(
@@ -254,7 +256,9 @@ def render_molecules_grid(
             from molecular_string_renderer.utils import handle_output_saving
 
             # Generate a representative string for the grid for auto filename
-            grid_string = f"grid_{len(molecular_strings)}_molecules" if auto_filename else None
+            grid_string = (
+                f"grid_{len(molecular_strings)}_molecules" if auto_filename else None
+            )
 
             handle_output_saving(
                 image=image,

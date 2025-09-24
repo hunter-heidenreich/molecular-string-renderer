@@ -93,7 +93,9 @@ class TestGIFSpecificBehavior:
         """Test that GIF preserves transparency when converting to palette."""
         gif_output = GIFOutput()
         result = gif_output.get_bytes(rgba_image)
-        TestValidators.assert_valid_bytes_output(result, "GIF transparency preservation")
+        TestValidators.assert_valid_bytes_output(
+            result, "GIF transparency preservation"
+        )
 
     def test_optimization_support(self, pattern_image):
         """Test that GIF supports optimization."""
@@ -119,7 +121,9 @@ class TestGIFSpecificBehavior:
         low_bytes = low_quality.get_bytes(test_image)
 
         # Validate both outputs
-        TestValidators.assert_valid_bytes_output(high_bytes, "GIF high quality (ignored)")
+        TestValidators.assert_valid_bytes_output(
+            high_bytes, "GIF high quality (ignored)"
+        )
         TestValidators.assert_valid_bytes_output(low_bytes, "GIF low quality (ignored)")
 
         # Quality should be ignored, so outputs should be identical
@@ -151,11 +155,11 @@ class TestGIFSpecificBehavior:
     def test_gif_with_already_palette_image(self):
         """Test GIF with images that are already in palette mode."""
         from PIL import Image
-        
+
         # Create a palette mode image properly
         rgb_image = Image.new("RGB", (50, 50), (255, 0, 0))  # Start with RGB
         palette_image = rgb_image.convert("P")  # Convert to palette mode
-        
+
         gif_output = GIFOutput()
         result = gif_output.get_bytes(palette_image)
         TestValidators.assert_valid_bytes_output(result, "GIF palette mode")
@@ -169,10 +173,10 @@ class TestGIFSpecificBehavior:
     def test_gif_1bit_images(self):
         """Test GIF handling of 1-bit (black and white) images."""
         from PIL import Image
-        
+
         # Create a 1-bit image
         bw_image = Image.new("1", (50, 50), 1)
-        
+
         gif_output = GIFOutput()
         result = gif_output.get_bytes(bw_image)
         TestValidators.assert_valid_bytes_output(result, "GIF 1-bit")

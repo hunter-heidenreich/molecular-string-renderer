@@ -48,7 +48,9 @@ def handle_grid_rendering(args, render_config, parser_config, output_config) -> 
     mols_per_row = args.mols_per_row
     if mols_per_row is None:
         mols_per_row = min(len(molecular_strings), 4)
-        logger.debug(f"Using smart default mols_per_row={mols_per_row} for {len(molecular_strings)} molecules")
+        logger.debug(
+            f"Using smart default mols_per_row={mols_per_row} for {len(molecular_strings)} molecules"
+        )
 
     # Parse legends if provided
     legends = None
