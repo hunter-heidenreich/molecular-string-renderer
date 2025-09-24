@@ -36,6 +36,7 @@ def determine_output_format(output_path: str | None, output_format: str | None) 
             ".tiff": "tiff",
             ".tif": "tiff",
             ".bmp": "bmp",
+            ".gif": "gif",
         }
         return format_map.get(suffix, "png")
 

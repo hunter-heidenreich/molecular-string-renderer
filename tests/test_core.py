@@ -165,8 +165,8 @@ class TestRenderMolecule:
         """Test render_molecule with invalid output formats."""
         invalid_formats = [
             "invalid",
-            "gif",
             "ico",
+            "xyz",
         ]
 
         for invalid_format in invalid_formats:

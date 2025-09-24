@@ -129,3 +129,27 @@ class BMPOutput(RasterOutputHandler):
     def _get_save_kwargs(self) -> dict[str, Any]:
         """Get BMP-specific save kwargs (no optimization support)."""
         return {"format": self.pil_format}
+
+
+class GIFOutput(RasterOutputHandler):
+    """GIF output handler."""
+
+    def __init__(self, config: OutputConfig | None = None) -> None:
+        """Initialize GIF output handler."""
+        super().__init__("gif", config)
+
+    def _prepare_image(self, image: Image.Image) -> Image.Image:
+        """Prepare image for GIF saving (convert to palette mode for optimal quality)."""
+        return ImageModeUtils.ensure_gif_compatible(image)
+
+    def _get_save_kwargs(self) -> dict[str, Any]:
+        """Get GIF-specific save kwargs."""
+        kwargs = {"format": self.pil_format}
+
+        # GIF can be optimized even though it doesn't support quality settings
+        if self.config.optimize:
+            kwargs["optimize"] = True
+
+        # Add transparency preservation
+        # PIL will automatically preserve transparency when saving in P mode
+        return kwargs

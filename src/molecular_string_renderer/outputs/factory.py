@@ -10,6 +10,7 @@ from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs.base import OutputHandler
 from molecular_string_renderer.outputs.raster import (
     BMPOutput,
+    GIFOutput,
     JPEGOutput,
     PNGOutput,
     TIFFOutput,
@@ -30,6 +31,7 @@ _OUTPUT_HANDLERS: dict[str, type[OutputHandler]] = {
     "tiff": TIFFOutput,
     "tif": TIFFOutput,  # Alternative extension for TIFF
     "bmp": BMPOutput,
+    "gif": GIFOutput,
 }
 
 

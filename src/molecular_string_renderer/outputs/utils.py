@@ -86,6 +86,14 @@ class FormatRegistry:
             supports_quality=False,
             mime_type="image/bmp",
         ),
+        "gif": FormatInfo(
+            extension=".gif",
+            pil_format="GIF",
+            valid_extensions=[".gif"],
+            supports_alpha=True,
+            supports_quality=False,
+            mime_type="image/gif",
+        ),
         "svg": FormatInfo(
             extension=".svg",
             pil_format="SVG",
@@ -231,6 +239,34 @@ class ImageModeUtils:
             return image.convert("RGB")
         else:
             return ImageModeUtils._convert_to_rgb_with_warning(image, "BMP")
+
+    @staticmethod
+    def ensure_gif_compatible(image: Image.Image) -> Image.Image:
+        """Ensure image is compatible with GIF format.
+
+        Args:
+            image: PIL Image to make GIF-compatible
+
+        Returns:
+            GIF-compatible image
+        """
+        # GIF supports 1, L, P modes and can handle transparency via P mode
+        if image.mode in ("1", "L", "P"):
+            return image
+        elif image.mode == "RGB":
+            # Convert to P mode with palette for optimal GIF size and quality
+            return image.convert("P", palette=Image.ADAPTIVE)
+        elif image.mode == "RGBA":
+            # Convert to P mode with palette, preserving transparency
+            return image.convert("P", palette=Image.ADAPTIVE)
+        elif image.mode == "LA":
+            # Convert LA to RGB first, then to palette mode
+            rgb_image = image.convert("RGB")
+            return rgb_image.convert("P", palette=Image.ADAPTIVE)
+        else:
+            # For other modes, convert to RGB first then to P
+            rgb_image = ImageModeUtils._convert_to_rgb_with_warning(image, "GIF")
+            return rgb_image.convert("P", palette=Image.ADAPTIVE)
 
 
 def create_safe_filename(molecular_string: str, extension: str = ".png") -> str:

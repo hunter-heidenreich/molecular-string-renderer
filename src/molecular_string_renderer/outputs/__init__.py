@@ -8,6 +8,7 @@ from molecular_string_renderer.outputs.base import OutputHandler
 from molecular_string_renderer.outputs.factory import get_output_handler
 from molecular_string_renderer.outputs.raster import (
     BMPOutput,
+    GIFOutput,
     JPEGOutput,
     PNGOutput,
     TIFFOutput,
@@ -25,6 +26,7 @@ __all__ = [
     "WEBPOutput",
     "TIFFOutput",
     "BMPOutput",
+    "GIFOutput",
     "SVGOutput",
     "PDFOutput",
 ]

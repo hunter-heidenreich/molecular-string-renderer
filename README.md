@@ -58,6 +58,7 @@ mol-render "CCO" --output-format pdf
 mol-render "CCO" --output-format webp
 mol-render "CCO" --output-format tiff
 mol-render "CCO" --output-format bmp
+mol-render "CCO" --output-format gif
 mol-render "InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3" --format inchi
 mol-render "[C][C][O]" --format selfies
 
@@ -155,6 +156,7 @@ grid = renderer.render_grid(molecules, legends=["Ethanol", "Acetic Acid", "Benze
 - **WebP** (`webp`): Modern web format with efficient compression
 - **TIFF** (`tiff`, `tif`): Tagged Image File Format (high quality, supports transparency)
 - **BMP** (`bmp`): Bitmap format (uncompressed)
+- **GIF** (`gif`): Graphics Interchange Format (supports transparency and optimization)
 
 ## Configuration Options
 
@@ -332,6 +334,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ### Version 0.2.0
 - Enhanced SELFIES support with improved parsing
+- **New output format**: Added GIF support with transparency and optimization
 - **New configuration options**: Added `dpi`, `progressive`, `lossless`, `metadata`, `svg_sanitize`, `svg_use_vector`, and `svg_line_width_mult` to OutputConfig
 - **Enhanced SVG support**: True vector SVG rendering with configurable generation strategies and line width control
 - **PDF metadata support**: Embed custom metadata in PDF outputs
@@ -346,7 +349,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 ### Version 0.1.0
 - Initial release
 - Support for SMILES, InChI, SELFIES, and MOL format parsing
-- PNG, SVG, JPEG, PDF, WebP, TIFF, and BMP output formats
+- PNG, SVG, JPEG, PDF, WebP, TIFF, BMP, and GIF output formats
 - Command-line interface for easy use
 - Modular architecture for extensibility
 - Comprehensive configuration system

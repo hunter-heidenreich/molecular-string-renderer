@@ -304,6 +304,7 @@ class TestOutputConfig:
             "tiff",
             "tif",
             "bmp",
+            "gif",
         ]
 
         for fmt in supported_formats:
@@ -323,7 +324,7 @@ class TestOutputConfig:
 
     def test_validate_format_unsupported(self):
         """Test validate_format with unsupported formats."""
-        unsupported_formats = ["gif", "ico", "raw", "invalid"]
+        unsupported_formats = ["ico", "raw", "invalid", "xyz"]
 
         for fmt in unsupported_formats:
             with pytest.raises(ValidationError) as exc_info:

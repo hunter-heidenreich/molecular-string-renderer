@@ -25,6 +25,7 @@ from PIL import Image
 from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs import (
     BMPOutput,
+    GIFOutput,
     JPEGOutput,
     PDFOutput,
     PNGOutput,
@@ -45,6 +46,7 @@ RASTER_FORMATS = {
     "webp": WEBPOutput,
     "tiff": TIFFOutput,
     "bmp": BMPOutput,
+    "gif": GIFOutput,
 }
 
 VECTOR_FORMATS = {
@@ -81,6 +83,11 @@ FORMAT_CAPABILITIES = {
         "supports_quality": False,
         "supports_optimization": False,
     },
+    "gif": {
+        "supports_alpha": True,
+        "supports_quality": False,
+        "supports_optimization": True,
+    },
     "svg": {
         "supports_alpha": True,
         "supports_quality": False,
@@ -102,6 +109,11 @@ FORMAT_MODE_BEHAVIOR = {
     "bmp": {
         "RGBA": "RGB",  # BMP may not support RGBA in all cases
         "LA": "RGB",  # BMP converts LA to RGB
+    },
+    "gif": {
+        "RGBA": "P",  # GIF converts RGBA to P mode with palette
+        "RGB": "P",   # GIF converts RGB to P mode for optimal compression
+        "LA": "P",    # GIF converts LA to P mode
     },
     # PNG, WEBP, TIFF preserve transparency by default
     # SVG and PDF handle transparency through their own mechanisms

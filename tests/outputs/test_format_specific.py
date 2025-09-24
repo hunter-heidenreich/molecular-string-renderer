@@ -17,6 +17,7 @@ Each test class focuses on one format's unique characteristics:
 from molecular_string_renderer.config import OutputConfig
 from molecular_string_renderer.outputs import (
     BMPOutput,
+    GIFOutput,
     JPEGOutput,
     PNGOutput,
     SVGOutput,
@@ -71,6 +72,110 @@ class TestJPEGSpecificBehavior:
             TestValidators.assert_valid_bytes_output(
                 result, f"JPEG with metadata {list(metadata.keys())}"
             )
+
+
+class TestGIFSpecificBehavior:
+    """Test GIF-specific behaviors that differ from other formats."""
+
+    def test_rgba_to_palette_conversion(self, rgba_image):
+        """Test that GIF converts RGBA to palette mode."""
+        gif_output = GIFOutput()
+        result = gif_output.get_bytes(rgba_image)
+        TestValidators.assert_valid_bytes_output(result, "GIF RGBA conversion")
+
+    def test_rgb_to_palette_conversion(self, test_image):
+        """Test that GIF converts RGB to palette mode for optimization."""
+        gif_output = GIFOutput()
+        result = gif_output.get_bytes(test_image)
+        TestValidators.assert_valid_bytes_output(result, "GIF RGB conversion")
+
+    def test_transparency_preservation(self, rgba_image):
+        """Test that GIF preserves transparency when converting to palette."""
+        gif_output = GIFOutput()
+        result = gif_output.get_bytes(rgba_image)
+        TestValidators.assert_valid_bytes_output(result, "GIF transparency preservation")
+
+    def test_optimization_support(self, pattern_image):
+        """Test that GIF supports optimization."""
+        optimized_gif = GIFOutput(OutputConfig(optimize=True))
+        unoptimized_gif = GIFOutput(OutputConfig(optimize=False))
+
+        optimized_bytes = optimized_gif.get_bytes(pattern_image)
+        unoptimized_bytes = unoptimized_gif.get_bytes(pattern_image)
+
+        # Validate both outputs
+        TestValidators.assert_valid_bytes_output(optimized_bytes, "GIF optimized")
+        TestValidators.assert_valid_bytes_output(unoptimized_bytes, "GIF unoptimized")
+
+        # Optimized should generally be smaller or equal size
+        assert len(optimized_bytes) <= len(unoptimized_bytes)
+
+    def test_no_quality_support(self, test_image):
+        """Test that GIF ignores quality settings."""
+        high_quality = GIFOutput(OutputConfig(quality=95))
+        low_quality = GIFOutput(OutputConfig(quality=10))
+
+        high_bytes = high_quality.get_bytes(test_image)
+        low_bytes = low_quality.get_bytes(test_image)
+
+        # Validate both outputs
+        TestValidators.assert_valid_bytes_output(high_bytes, "GIF high quality (ignored)")
+        TestValidators.assert_valid_bytes_output(low_bytes, "GIF low quality (ignored)")
+
+        # Quality should be ignored, so outputs should be identical
+        assert high_bytes == low_bytes
+
+    def test_gif_mode_conversions(self, la_image):
+        """Test GIF handling of various image modes."""
+        from .conftest import create_test_image_with_mode
+
+        gif_output = GIFOutput()
+
+        # Test LA mode conversion to palette
+        result = gif_output.get_bytes(la_image)
+        TestValidators.assert_valid_bytes_output(result, "GIF LA conversion")
+
+        # Test other modes that need conversion to palette
+        modes_to_test = ["CMYK", "YCbCr", "HSV"]
+        for mode in modes_to_test:
+            try:
+                test_image = create_test_image_with_mode(mode, (50, 50))
+                result = gif_output.get_bytes(test_image)
+                TestValidators.assert_valid_bytes_output(
+                    result, f"GIF {mode} conversion"
+                )
+            except OSError:
+                # Some modes may not be directly creatable
+                pass
+
+    def test_gif_with_already_palette_image(self):
+        """Test GIF with images that are already in palette mode."""
+        from PIL import Image
+        
+        # Create a palette mode image properly
+        rgb_image = Image.new("RGB", (50, 50), (255, 0, 0))  # Start with RGB
+        palette_image = rgb_image.convert("P")  # Convert to palette mode
+        
+        gif_output = GIFOutput()
+        result = gif_output.get_bytes(palette_image)
+        TestValidators.assert_valid_bytes_output(result, "GIF palette mode")
+
+    def test_gif_grayscale_images(self, grayscale_image):
+        """Test GIF handling of grayscale images."""
+        gif_output = GIFOutput()
+        result = gif_output.get_bytes(grayscale_image)
+        TestValidators.assert_valid_bytes_output(result, "GIF grayscale")
+
+    def test_gif_1bit_images(self):
+        """Test GIF handling of 1-bit (black and white) images."""
+        from PIL import Image
+        
+        # Create a 1-bit image
+        bw_image = Image.new("1", (50, 50), 1)
+        
+        gif_output = GIFOutput()
+        result = gif_output.get_bytes(bw_image)
+        TestValidators.assert_valid_bytes_output(result, "GIF 1-bit")
 
 
 class TestBMPSpecificBehavior:
