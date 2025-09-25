@@ -149,6 +149,10 @@ class TestRenderConfig:
             "highlightAtoms": [],
             "highlightBonds": [],
             "explicitMethyl": False,
+            "bondLineWidth": 2.0,
+            "addStereoAnnotation": False,
+            "includeRadicals": True,
+            "rotate": 0.0,
         }
 
         assert options == expected
@@ -166,6 +170,10 @@ class TestRenderConfig:
             "highlightAtoms": [0, 1, 2],
             "highlightBonds": [0, 1],
             "explicitMethyl": True,
+            "bondLineWidth": 2.0,
+            "addStereoAnnotation": False,
+            "includeRadicals": True,
+            "rotate": 0.0,
         }
 
         assert options == expected

@@ -794,6 +794,7 @@ class TestGetSupportedFormats:
             "tiff",
             "tif",
             "bmp",
+            "gif",
         }
 
         assert isinstance(output_formats, dict)

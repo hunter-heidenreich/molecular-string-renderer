@@ -80,8 +80,9 @@ class TestMoleculeGridRendererSpecific:
         prepared_mols = [Mock(), Mock()]
         mock_prepare.side_effect = prepared_mols
 
-        # Mock grid image
-        img = Mock()
+        # Mock grid image - create a proper PIL Image mock
+        from PIL import Image
+        img = Mock(spec=Image.Image)
         img.mode = "RGBA"
         img.size = (800, 400)
         mock_grid_image.return_value = img
@@ -95,6 +96,9 @@ class TestMoleculeGridRendererSpecific:
             molsPerRow=4,  # Default value
             subImgSize=(200, 200),  # Default value
             legends=None,
+            drawOptions=mock_grid_image.call_args.kwargs['drawOptions'],
+            highlightAtomLists=None,
+            highlightAtomColors=None,
         )
         assert result == img
 
@@ -117,7 +121,8 @@ class TestMoleculeGridRendererSpecific:
         prepared_mols = [Mock(), Mock()]
         mock_prepare.side_effect = prepared_mols
 
-        img = Mock()
+        from PIL import Image
+        img = Mock(spec=Image.Image)
         img.mode = "RGBA"
         mock_grid_image.return_value = img
 
@@ -128,6 +133,9 @@ class TestMoleculeGridRendererSpecific:
             molsPerRow=4,
             subImgSize=(200, 200),
             legends=legends,
+            drawOptions=mock_grid_image.call_args.kwargs['drawOptions'],
+            highlightAtomLists=None,
+            highlightAtomColors=None,
         )
         assert result == img
 
@@ -146,7 +154,8 @@ class TestMoleculeGridRendererSpecific:
         prepared_mols = [Mock(), Mock()]
         mock_prepare.side_effect = prepared_mols
 
-        img = Mock()
+        from PIL import Image
+        img = Mock(spec=Image.Image)
         img.mode = "RGBA"
         mock_grid_image.return_value = img
 
@@ -159,6 +168,9 @@ class TestMoleculeGridRendererSpecific:
             molsPerRow=4,
             subImgSize=(200, 200),
             legends=legends,
+            drawOptions=mock_grid_image.call_args.kwargs['drawOptions'],
+            highlightAtomLists=None,
+            highlightAtomColors=None,
         )
 
     @patch(
@@ -174,7 +186,8 @@ class TestMoleculeGridRendererSpecific:
         mock_prepare.side_effect = [valid_mol1, Exception("Invalid"), valid_mol2]
 
         with patch("rdkit.Chem.Draw.MolsToGridImage") as mock_grid:
-            img = Mock()
+            from PIL import Image
+            img = Mock(spec=Image.Image)
             img.mode = "RGBA"
             mock_grid.return_value = img
 
@@ -186,6 +199,9 @@ class TestMoleculeGridRendererSpecific:
                 molsPerRow=4,
                 subImgSize=(200, 200),
                 legends=None,
+                drawOptions=mock_grid.call_args.kwargs['drawOptions'],
+                highlightAtomLists=None,
+                highlightAtomColors=None,
             )
 
     @patch(
@@ -217,7 +233,8 @@ class TestMoleculeGridRendererSpecific:
         valid_mol = Mock()
         mock_prepare.side_effect = [valid_mol, Exception("Invalid")]
 
-        img = Mock()
+        from PIL import Image
+        img = Mock(spec=Image.Image)
         img.mode = "RGBA"
         mock_grid_image.return_value = img
 
@@ -232,6 +249,9 @@ class TestMoleculeGridRendererSpecific:
             molsPerRow=4,
             subImgSize=(200, 200),
             legends=None,
+            drawOptions=mock_grid_image.call_args.kwargs['drawOptions'],
+            highlightAtomLists=None,
+            highlightAtomColors=None,
         )
 
     def test_render_grid_with_highlights_basic(self):
@@ -358,7 +378,8 @@ class TestMoleculeGridRendererEdgeCases:
                 # Mock successful preparation for all molecules
                 mock_prepare.side_effect = [Mock() for _ in range(100)]
 
-                img = Mock()
+                from PIL import Image
+                img = Mock(spec=Image.Image)
                 img.mode = "RGBA"
                 mock_grid_image.return_value = img
 
@@ -377,7 +398,8 @@ class TestMoleculeGridRendererEdgeCases:
             with patch("rdkit.Chem.Draw.MolsToGridImage") as mock_grid_image:
                 mock_prepare.return_value = Mock()
 
-                img = Mock()
+                from PIL import Image
+                img = Mock(spec=Image.Image)
                 img.mode = "RGBA"
                 mock_grid_image.return_value = img
 
@@ -390,6 +412,9 @@ class TestMoleculeGridRendererEdgeCases:
                     molsPerRow=3,
                     subImgSize=(200, 200),
                     legends=None,
+                    drawOptions=mock_grid_image.call_args.kwargs['drawOptions'],
+                    highlightAtomLists=None,
+                    highlightAtomColors=None,
                 )
                 assert result == img
 
