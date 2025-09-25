@@ -221,3 +221,10 @@ examples/*.pdf
 examples/*.tiff
 examples/*.bmp
 examples/*.webp
+
+# Test output files
+test_*.png
+test_*.svg
+test_*.jpg
+bond_width_*.png
+comprehensive_test_*.png

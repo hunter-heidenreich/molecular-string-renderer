@@ -55,8 +55,19 @@ class DrawerConfigurationManager:
 
         # Handle carbon display
         options.explicitMethyl = self.config.show_carbon
-
+        
+        # Handle new visual options
+        options.bondLineWidth = self.config.bond_line_width
+        options.addStereoAnnotation = self.config.show_stereo_labels
+        options.includeRadicals = self.config.show_formal_charges
+        options.rotate = self.config.rotation_angle
+        
         # Additional configuration can be added here as needed
         logger.debug(
-            f"Configured drawer with background: {self.config.background_color}, carbon display: {self.config.show_carbon}"
+            f"Configured drawer with background: {self.config.background_color}, "
+            f"carbon display: {self.config.show_carbon}, "
+            f"bond width: {self.config.bond_line_width}, "
+            f"stereo labels: {self.config.show_stereo_labels}, "
+            f"formal charges: {self.config.show_formal_charges}, "
+            f"rotation: {self.config.rotation_angle}°"
         )

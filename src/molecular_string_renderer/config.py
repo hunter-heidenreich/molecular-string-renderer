@@ -43,11 +43,30 @@ class RenderConfig(BaseModel):
         default=False, description="Show explicit hydrogen atoms"
     )
     show_carbon: bool = Field(default=False, description="Show carbon atom labels")
+    
+    # Advanced visual options
+    bond_line_width: float = Field(
+        default=2.0, ge=0.5, le=10.0, description="Bond line thickness"
+    )
+    show_stereo_labels: bool = Field(
+        default=False, description="Show stereochemistry labels (R/S, E/Z)"
+    )
+    show_formal_charges: bool = Field(
+        default=True, description="Show formal charges on atoms"
+    )
+    rotation_angle: float = Field(
+        default=0.0, ge=-360.0, le=360.0, description="Rotation angle in degrees"
+    )
+    
+    # Highlighting options
     highlight_atoms: list[int] | None = Field(
         default=None, description="List of atom indices to highlight"
     )
     highlight_bonds: list[int] | None = Field(
         default=None, description="List of bond indices to highlight"
+    )
+    highlight_colors: dict[int, str] | None = Field(
+        default=None, description="Custom colors for highlighted atoms/bonds (index -> color)"
     )
 
     @field_validator("background_color")
@@ -71,6 +90,35 @@ class RenderConfig(BaseModel):
                 raise ValueError(f"Invalid hex color: {v}")
         return v
 
+    @field_validator("highlight_colors")
+    @classmethod
+    def validate_highlight_colors(cls, v):
+        """Validate highlight colors dictionary.
+
+        Args:
+            v: The highlight colors dictionary to validate.
+
+        Returns:
+            The validated highlight colors dictionary.
+
+        Raises:
+            ValueError: If any color value is invalid.
+        """
+        if v is None:
+            return v
+        
+        for idx, color in v.items():
+            if not isinstance(idx, int) or idx < 0:
+                raise ValueError(f"Highlight color index must be a non-negative integer, got: {idx}")
+            
+            # Validate color format (same logic as background_color)
+            if isinstance(color, str) and color.startswith("#"):
+                if len(color) not in [4, 7] or not all(
+                    c in "0123456789abcdefABCDEF" for c in color[1:]
+                ):
+                    raise ValueError(f"Invalid hex color for index {idx}: {color}")
+        return v
+
     @property
     def size(self) -> tuple[int, int]:
         """Get image size as tuple.
@@ -92,6 +140,10 @@ class RenderConfig(BaseModel):
             "highlightAtoms": self.highlight_atoms or [],
             "highlightBonds": self.highlight_bonds or [],
             "explicitMethyl": self.show_carbon,
+            "bondLineWidth": self.bond_line_width,
+            "addStereoAnnotation": self.show_stereo_labels,
+            "includeRadicals": self.show_formal_charges,
+            "rotate": self.rotation_angle,
         }
 
 
