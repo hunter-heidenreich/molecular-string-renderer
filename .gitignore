@@ -211,3 +211,13 @@ __marimo__/
 out/
 
 .DS_Store
+
+examples/*.png
+examples/*.svg
+examples/*.jpg
+examples/*.jpeg
+examples/*.gif
+examples/*.pdf
+examples/*.tiff
+examples/*.bmp
+examples/*.webp

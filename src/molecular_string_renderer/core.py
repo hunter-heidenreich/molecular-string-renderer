@@ -60,14 +60,16 @@ def render_molecule(
         output_format: Output image format. Supported: 'png', 'svg', 'jpg', 'jpeg',
                       'pdf', 'webp', 'tiff', 'tif', 'bmp'. Default: 'png'
         output_path: Path to save image. If None and auto_filename=True, generates
-                    safe filename. If None and auto_filename=False, no file saved
+                    safe filename. If None and auto_filename=False, no file saved.
+                    If provided, auto_filename is automatically set to False
         render_config: Rendering options (size, colors, atom display). If None,
                       uses RenderConfig() defaults (500x500px, white background)
         parser_config: Parsing options (sanitization, hydrogen handling). If None,
                       uses ParserConfig() defaults (sanitize=True, strict=False)
         output_config: Output options (quality, DPI, compression). If None,
                       uses OutputConfig() defaults (quality=95, DPI=150)
-        auto_filename: Generate safe filename if output_path=None. Default: True
+        auto_filename: Generate safe filename if output_path=None. Default: True.
+                      Automatically set to False if output_path is provided
 
     Returns:
         PIL Image object containing the rendered molecule. Always RGBA mode for
@@ -130,6 +132,10 @@ def render_molecule(
             molecular_string, format_type, output_path
         )
 
+        # Override auto_filename if output_path is provided
+        if output_path is not None:
+            auto_filename = False
+
         # Parse and render molecule
         mol = pipeline.parse_molecule(molecular_string, format_type)
         image = pipeline.render_molecule(mol)
@@ -177,7 +183,8 @@ def render_molecules_grid(
         render_config: Configuration for rendering
         parser_config: Configuration for parsing
         output_config: Configuration for output
-        auto_filename: Generate safe filename if output_path=None. Default: True
+        auto_filename: Generate safe filename if output_path=None. Default: True.
+                      Automatically set to False if output_path is provided
 
     Returns:
         PIL Image object containing the molecule grid
@@ -200,6 +207,10 @@ def render_molecules_grid(
     _, format_type, output_path = validate_and_normalize_inputs(
         format_type=format_type, output_path=output_path
     )
+
+    # Override auto_filename if output_path is provided
+    if output_path is not None:
+        auto_filename = False
 
     # Validate legends if provided
     if legends is not None:
@@ -362,6 +373,7 @@ def get_supported_formats() -> dict[str, dict[str, str]]:
             "tiff": "Tagged Image File Format (high quality, supports transparency)",
             "tif": "TIFF image format (alternative extension)",
             "bmp": "Bitmap image format (uncompressed)",
+            "gif": "Graphics Interchange Format (limited color, not recommended)",
         },
         "renderer_types": {
             "2d": "2D molecular structure rendering",

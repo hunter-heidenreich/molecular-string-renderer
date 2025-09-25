@@ -14,6 +14,7 @@ from rdkit.Chem import Draw
 from molecular_string_renderer.config import RenderConfig
 
 from .base import MolecularRenderer
+from .config_manager import DrawerConfigurationManager
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,26 @@ class MoleculeGridRenderer(MolecularRenderer):
 
         self.mols_per_row = mols_per_row
         self.mol_size = mol_size
+
+    def _create_draw_options(self) -> Draw.MolDrawOptions:
+        """
+        Create RDKit MolDrawOptions from RenderConfig using DrawerConfigurationManager.
+
+        Returns:
+            MolDrawOptions configured based on self.config settings
+
+        Note:
+            This uses the same configuration approach as Molecule2DRenderer for consistency.
+        """
+        # Create a temporary drawer to get properly configured options
+        config_manager = DrawerConfigurationManager(self.config)
+        drawer = config_manager.create_drawer()
+        
+        # Get the configured options from the drawer
+        draw_opts = drawer.drawOptions()
+        
+        logger.debug("Created MolDrawOptions using DrawerConfigurationManager")
+        return draw_opts
 
     def render(self, mol: Mol) -> Image.Image:
         """
@@ -122,18 +143,41 @@ class MoleculeGridRenderer(MolecularRenderer):
                 f"Rendering grid of {len(valid_mols)} molecules, {self.mols_per_row} per row"
             )
 
+            # Create draw options from configuration
+            draw_opts = self._create_draw_options()
+
             img = Draw.MolsToGridImage(
                 valid_mols,
                 molsPerRow=self.mols_per_row,
                 subImgSize=self.mol_size,
                 legends=legends,
+                drawOptions=draw_opts,
             )
 
-            if img.mode != "RGBA":
-                img = img.convert("RGBA")
+            # Handle both PIL Image and IPython Display Image objects
+            if isinstance(img, Image.Image):
+                # Standard PIL Image - use directly
+                pil_img = img
+            else:
+                # Check if it's an IPython Display Image (common in Jupyter notebooks)
+                try:
+                    # Try to access the data attribute of IPython.core.display.Image
+                    if hasattr(img, 'data'):
+                        from io import BytesIO
+                        # Convert bytes data to PIL Image
+                        pil_img = Image.open(BytesIO(img.data))
+                        logger.debug("Converted IPython Display Image to PIL Image")
+                    else:
+                        raise RuntimeError(f"RDKit returned unexpected object type: {type(img)}")
+                except Exception as e:
+                    logger.error(f"Failed to convert RDKit output to PIL Image: {e}")
+                    raise RuntimeError(f"RDKit failed to render molecule grid to image: {type(img)}")
 
-            logger.debug(f"Successfully rendered molecule grid to {img.size} image")
-            return img
+            if pil_img.mode != "RGBA":
+                pil_img = pil_img.convert("RGBA")
+
+            logger.debug(f"Successfully rendered molecule grid to {pil_img.size} image")
+            return pil_img
 
         except Exception as e:
             logger.error(f"Failed to render molecule grid: {e}")

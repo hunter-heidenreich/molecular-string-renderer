@@ -131,6 +131,20 @@ class TestRenderMolecule:
             # Should not trigger saving
             mock_save.assert_not_called()
 
+    def test_render_molecule_output_path_overrides_auto_filename(self):
+        """Test that providing output_path automatically sets auto_filename to False."""
+        with patch("molecular_string_renderer.utils.handle_output_saving") as mock_save:
+            # Even though auto_filename=True, it should be overridden to False when output_path is provided
+            image = render_molecule("CCO", output_path="test.png", auto_filename=True)
+
+            assert isinstance(image, Image.Image)
+            mock_save.assert_called_once()
+            
+            # Check that auto_filename was set to False in the call
+            call_args = mock_save.call_args
+            assert call_args.kwargs["auto_filename"] is False
+            assert call_args.kwargs["output_path"] == Path("test.png")
+
     def test_render_molecule_invalid_molecular_string(self):
         """Test render_molecule with invalid molecular strings."""
         invalid_strings = [
@@ -365,6 +379,22 @@ class TestRenderMoleculesGrid:
 
             assert isinstance(image, Image.Image)
             assert output_path.exists()
+
+    def test_render_molecules_grid_output_path_overrides_auto_filename(self):
+        """Test that providing output_path automatically sets auto_filename to False for grid."""
+        molecules = ["CCO", "CC(=O)O"]
+        
+        with patch("molecular_string_renderer.utils.handle_output_saving") as mock_save:
+            # Even though auto_filename=True, it should be overridden to False when output_path is provided
+            image = render_molecules_grid(molecules, output_path="grid.png", auto_filename=True)
+
+            assert isinstance(image, Image.Image)
+            mock_save.assert_called_once()
+            
+            # Check that auto_filename was set to False in the call
+            call_args = mock_save.call_args
+            assert call_args.kwargs["auto_filename"] is False
+            assert call_args.kwargs["output_path"] == Path("grid.png")
 
     def test_render_molecules_grid_custom_configurations(self):
         """Test render_molecules_grid with custom configurations."""
