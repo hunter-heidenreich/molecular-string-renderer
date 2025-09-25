@@ -146,12 +146,27 @@ class MoleculeGridRenderer(MolecularRenderer):
             # Create draw options from configuration
             draw_opts = self._create_draw_options()
 
+            # Prepare highlight colors for grid rendering
+            highlight_atom_colors = None
+            if self.config.highlight_colors and self.config.highlight_atoms:
+                from .utils import ColorUtils
+                # Create a list of color dictionaries, one for each molecule
+                highlight_atom_colors = []
+                for i in range(len(valid_mols)):
+                    mol_colors = {}
+                    for atom_idx, color_str in self.config.highlight_colors.items():
+                        if atom_idx in (self.config.highlight_atoms or []):
+                            mol_colors[atom_idx] = ColorUtils.parse_color_to_rgb_tuple(color_str)
+                    highlight_atom_colors.append(mol_colors)
+
             img = Draw.MolsToGridImage(
                 valid_mols,
                 molsPerRow=self.mols_per_row,
                 subImgSize=self.mol_size,
                 legends=legends,
                 drawOptions=draw_opts,
+                highlightAtomLists=[self.config.highlight_atoms or [] for _ in valid_mols] if self.config.highlight_atoms else None,
+                highlightAtomColors=highlight_atom_colors,
             )
 
             # Handle both PIL Image and IPython Display Image objects

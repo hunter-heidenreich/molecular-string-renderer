@@ -4,6 +4,14 @@ applyTo: "**"
 
 # GitHub Copilot Instructions
 
+NO EMOJIS
+
+NO EMOJIS
+
+NO EMOJIS
+
+NO EMOJIS
+
 This is a Python repo for rendering molecular structures from various string formats (e.g., SMILES, InChI) to images using RDKit and Pillow.
 
 - use logging instead of print statements

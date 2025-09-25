@@ -54,3 +54,29 @@ class ColorUtils:
         """
         normalized = color_str.lower().strip()
         return normalized in ("white", "#ffffff", "#fff", "rgb(255,255,255)")
+
+    @staticmethod
+    def parse_color_to_rgb_tuple(color_str: str) -> tuple[float, float, float]:
+        """
+        Parse color string to RGB tuple (0-1 range) for RDKit highlights.
+
+        Args:
+            color_str: Color name or hex string
+
+        Returns:
+            RGB tuple with values in 0-1 range
+
+        Raises:
+            ValueError: If color cannot be parsed
+        """
+        try:
+            # Try to create a PIL image with the color to parse it
+            test_img = Image.new("RGB", (1, 1), color_str)
+            r, g, b = test_img.getpixel((0, 0))
+            return (r / 255.0, g / 255.0, b / 255.0)
+        except Exception as e:
+            logger.warning(
+                f"Failed to parse color '{color_str}': {e}. Using red as fallback."
+            )
+            # Fall back to red if color parsing fails
+            return (1.0, 0.0, 0.0)

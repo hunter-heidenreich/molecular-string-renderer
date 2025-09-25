@@ -55,10 +55,20 @@ class Molecule2DRenderer(MolecularRenderer):
 
             # Draw the molecule with optional highlights
             if self.config.highlight_atoms or self.config.highlight_bonds:
+                # Prepare highlight colors if specified
+                atom_colors = None
+                if self.config.highlight_colors:
+                    from .utils import ColorUtils
+                    atom_colors = {}
+                    for atom_idx, color_str in self.config.highlight_colors.items():
+                        if atom_idx in (self.config.highlight_atoms or []):
+                            atom_colors[atom_idx] = ColorUtils.parse_color_to_rgb_tuple(color_str)
+
                 drawer.DrawMolecule(
                     mol,
                     highlightAtoms=self.config.highlight_atoms or [],
                     highlightBonds=self.config.highlight_bonds or [],
+                    highlightAtomColors=atom_colors,
                 )
             else:
                 drawer.DrawMolecule(mol)
